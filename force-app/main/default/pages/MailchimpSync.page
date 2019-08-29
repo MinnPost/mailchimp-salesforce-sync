@@ -1,0 +1,19 @@
+<apex:page controller="MailchimpSyncController" action="{!fetchContacts}">
+    <h1>MinnPost Mailchimp Sync</h1>
+    <apex:pageMessages showDetail="TRUE" />
+    <apex:form>
+        <apex:commandButton action="{!pushContacts}" value="Push next 500 contacts to Mailchimp" />
+        <apex:pageBlock>
+            <apex:pageBlockTable var="contact" value="{!contactList}">
+                <apex:column>
+                    <apex:facet name="header">E-mail address</apex:facet>
+                    <apex:outputText value="{!contact.Email}" />
+                </apex:column>
+                <apex:column>
+                    <apex:facet name="header">Membership level</apex:facet>
+                    <apex:outputText value="{!contact.Account.Membership_Level__c}" />
+                </apex:column>
+            </apex:pageBlockTable>
+        </apex:pageBlock>
+    </apex:form>
+</apex:page>
