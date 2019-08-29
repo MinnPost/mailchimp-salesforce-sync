@@ -1,0 +1,9 @@
+.DS_Store
+*~
+.\#*
+\#*\#
+*.sw[po]
+
+/.sfdx/
+/.vscode/
+/exp/
