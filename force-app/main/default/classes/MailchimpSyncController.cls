@@ -128,7 +128,50 @@ public with sharing class MailchimpSyncController {
         return this.postToMailchimp(this.listEndpoint(), body.getAsString());
     }
 
-    private HttpResponse pushContactTags(List<Contact> contacts) {
+    private Boolean parseContactFieldsErrors(List<Contact> contacts, String respBody, Map<String, String> contactErrors) {
+        JSONParser fieldErrParser = JSON.createParser(respBody);
+        if (fieldErrParser.nextToken() != JSONToken.START_OBJECT) {
+            System.debug(LoggingLevel.ERROR,
+                'Error parsing Mailchimp response: expected ' + JSONToken.START_OBJECT +
+                ', got ' + fieldErrParser.getCurrentToken());
+            return false;
+        }
+
+        Integer totalCreated = 0, totalUpdated = 0, errorCount = 0;
+        while (fieldErrParser.nextValue() != null) {
+            switch on fieldErrParser.getCurrentName() {
+                when 'total_created' {
+                    totalCreated = fieldErrParser.getIntegerValue();
+                }
+                when 'total_updated' {
+                    totalUpdated = fieldErrParser.getIntegerValue();
+                }
+                when 'error_count' {
+                    errorCount = fieldErrParser.getIntegerValue();
+                }
+                when 'errors' {
+                    System.assert(fieldErrParser.getCurrentToken() == JSONToken.START_ARRAY);
+                    while (fieldErrParser.nextToken() != JSONToken.END_ARRAY) {
+                        BatchEmailError error =
+                            (BatchEmailError)fieldErrParser.readValueAsStrict(BatchEmailError.class);
+                        fieldErrParser.skipChildren();
+                        contactErrors.put(error.email_address, error.error);
+                    }
+                }
+                when else {
+                    if (fieldErrParser.getCurrentToken() == JSONToken.START_OBJECT ||
+                        fieldErrParser.getCurrentToken() == JSONToken.START_ARRAY) {
+                        fieldErrParser.skipChildren();
+                    }
+                }
+            }
+        }
+        System.debug(totalCreated + ' contacts added, ' + totalUpdated + ' updated, ' + errorCount + ' errors');
+
+        return true;
+    }
+
+    private HttpResponse pushContactTags(List<Contact> contacts, Map<String, String> contactErrors) {
         // Sync boolean fields as tags using batch endpoint
         // This call will return pretty much immediately, since the batch
         // operations are queued up to happen asynchronously.
@@ -138,6 +181,10 @@ public with sharing class MailchimpSyncController {
         body.writeFieldName('operations');
         body.writeStartArray();
         for (Contact c : contacts) {
+            if (contactErrors.containsKey(c.Email)) {
+                continue;
+            }
+
             tagsBody = JSON.createGenerator(false);
             tagsBody.writeStartObject();
             tagsBody.writeFieldName('tags');
@@ -168,6 +215,11 @@ public with sharing class MailchimpSyncController {
         return this.postToMailchimp('batches', body.getAsString());
     }
 
+    class BatchEmailError {
+        public String email_address;
+        public String error;
+    }
+
     public PageReference pushContacts() {
         // Find contacts (that haven't been synced [recently]?)
         // - Need subset of fields, plus account ID & type (Household)
@@ -194,9 +246,8 @@ public with sharing class MailchimpSyncController {
             return redirect;
         }
 
-        // Maybe a good use for a Set
         // TODO: Record batch ID to check/match up w/webhook later
-        HttpResponse tagsResp = this.pushContactTags(contacts);
+        HttpResponse tagsResp = this.pushContactTags(contacts, contactErrors);
         if (tagsResp.getStatusCode() != 200) {
             // TODO: Log errors to expose to user after redirect
             this.reportError('Mailchimp batch tags call', tagsResp.getBody());
@@ -211,6 +262,9 @@ public with sharing class MailchimpSyncController {
         // TODO: I've observed this fail because of a Flow Trigger blowing over
         // the Apex CPU time limit. Need to figure out what to do about that.
         for (Contact c : contacts) {
+            if (contactErrors.containsKey(c.Email)) {
+                continue;
+            }
             c.MailchimpLastSyncedAt__c = lastSyncedAt;
         }
         Database.SaveResult[] results = Database.update(contacts);
