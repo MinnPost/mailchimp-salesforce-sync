@@ -33,13 +33,13 @@ public with sharing class MailchimpSyncController {
         // - Can add last-synced date, compare against last-modified date
         List<Contact> contacts = this.contactsToSync(500);
         DateTime lastSyncedAt = DateTime.now();
-        Map<String, String> contactErrors = new Map<String, String>();
 
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
 
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        if (!mailchimp.pushAll(contacts, contactErrors)) {
+        MailchimpSyncManager.Result result = mailchimp.pushAll(contacts);
+        if (result.isError()) {
             return redirect;
         }
 
@@ -48,16 +48,17 @@ public with sharing class MailchimpSyncController {
         // TODO: I've observed this fail because of a Flow Trigger blowing over
         // the Apex CPU time limit. Need to figure out what to do about that.
         for (Contact c : contacts) {
-            if (contactErrors.containsKey(c.Email)) {
+            if (result.contactErrors.containsKey(c.Email)) {
+                insert result.contactErrors.get(c.Email);
                 continue;
             }
             c.MailchimpLastSyncedAt__c = lastSyncedAt;
         }
         Database.SaveResult[] results = Database.update(contacts);
-        for (Database.SaveResult result : results) {
-            if (result.isSuccess()) continue;
+        for (Database.SaveResult saveResult : results) {
+            if (saveResult.isSuccess()) continue;
             System.debug('Error(s) updating timestamp on synced records.');
-            for (Database.Error err : result.getErrors()) {
+            for (Database.Error err : saveResult.getErrors()) {
                 System.debug(err.getStatusCode() + ': ' + err.getMessage());
             }
         }

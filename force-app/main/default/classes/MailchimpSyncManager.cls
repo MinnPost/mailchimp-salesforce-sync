@@ -13,10 +13,25 @@ public with sharing class MailchimpSyncManager {
         TAG_NEVER_MEMBER => 'Never_member__c',
         TAG_PARTNER_OFFER_ELIGIBLE => 'Is_partner_offer_eligible__c'
     };
+    static final String STAGE_BATCH_SUB_UNSUB = '1 - Add/update contacts in Mailchimp';
+    static final String STAGE_BATCH_TAG = '2 - Add/update tags in Mailchimp';
 
     class BatchEmailError {
         public String email_address;
         public String error;
+    }
+
+    public class Result {
+        public Mailchimp_Sync_Error__c requestError;
+        public Map<String, Mailchimp_Sync_Error__c> contactErrors { get; private set; }
+
+        public Result() {
+            this.contactErrors = new Map<String, Mailchimp_Sync_Error__c>();
+        }
+
+        public Boolean isError() {
+            return (requestError != null);
+        }
     }
 
     private Http connection;
@@ -46,13 +61,21 @@ public with sharing class MailchimpSyncManager {
         return this.connection.send(req);
     }
 
-    private void reportError(String stage, String respBody) {
+    private Mailchimp_Sync_Error__c reportError(String stage, String respBody) {
         JSONParser parser = JSON.createParser(respBody);
         MailchimpErrorResponse error =
             (MailchimpErrorResponse)parser.readValueAsStrict(MailchimpErrorResponse.class);
         System.debug(LoggingLevel.ERROR,
             'Error in ' + stage + '. ' +
             error.status + ' ' + error.title + ': ' + error.detail);
+        Mailchimp_Sync_Error__c syncError = new Mailchimp_Sync_Error__c(
+            Stage__c=stage,
+            Status_Code__c=String.valueOf(error.status),
+            Title__c=error.title,
+            Detail__c=error.detail
+        );
+        insert syncError;
+        return syncError;
     }
 
     private HttpResponse pushContactFields(List<Contact> contacts) {
@@ -105,12 +128,18 @@ public with sharing class MailchimpSyncManager {
         return this.postToMailchimp(this.listEndpoint(), body.getAsString());
     }
 
-    private Boolean parseContactFieldsErrors(List<Contact> contacts, String respBody, Map<String, String> contactErrors) {
+    private Boolean parseContactFieldsErrors(List<Contact> contacts, String respBody, Result result) {
         JSONParser fieldErrParser = JSON.createParser(respBody);
         if (fieldErrParser.nextToken() != JSONToken.START_OBJECT) {
             System.debug(LoggingLevel.ERROR,
                 'Error parsing Mailchimp response: expected ' + JSONToken.START_OBJECT +
                 ', got ' + fieldErrParser.getCurrentToken());
+            result.requestError = new Mailchimp_Sync_Error__c(
+                Stage__c=STAGE_BATCH_SUB_UNSUB,
+                Title__c='Error parsing Mailchimp response',
+                Detail__c='expected ' + JSONToken.START_OBJECT + ', got ' + fieldErrParser.getCurrentToken()
+            );
+            insert result.requestError;
             return false;
         }
 
@@ -132,7 +161,16 @@ public with sharing class MailchimpSyncManager {
                         BatchEmailError error =
                             (BatchEmailError)fieldErrParser.readValueAsStrict(BatchEmailError.class);
                         fieldErrParser.skipChildren();
-                        contactErrors.put(error.email_address, error.error);
+                        String email = error.email_address;
+                        Id cId = [SELECT Id FROM Contact WHERE Email = :email LIMIT 1].Id;
+                        result.contactErrors.put(
+                            email,
+                            new Mailchimp_Sync_Error__c(
+                                Stage__c=STAGE_BATCH_SUB_UNSUB,
+                                Contact__c=cId,
+                                Detail__c=error.error
+                            )
+                        );
                     }
                 }
                 when else {
@@ -160,7 +198,7 @@ public with sharing class MailchimpSyncManager {
         tagsBody.writeEndObject();
     }
 
-    private HttpResponse pushContactTags(List<Contact> contacts, Map<String, String> contactErrors) {
+    private HttpResponse pushContactTags(List<Contact> contacts, Result result) {
         // Sync boolean fields as tags using batch endpoint
         // This call will return pretty much immediately, since the batch
         // operations are queued up to happen asynchronously.
@@ -170,7 +208,7 @@ public with sharing class MailchimpSyncManager {
         body.writeFieldName('operations');
         body.writeStartArray();
         for (Contact c : contacts) {
-            if (contactErrors.containsKey(c.Email)) {
+            if (result.contactErrors.containsKey(c.Email)) {
                 continue;
             }
 
@@ -204,7 +242,9 @@ public with sharing class MailchimpSyncManager {
         return this.postToMailchimp('batches', body.getAsString());
     }
 
-    public Boolean pushAll(List<Contact> contacts, Map<String, String> contactErrors) {
+    public Result pushAll(List<Contact> contacts) {
+        Result result = new Result();
+
         // Mailchimp API returns 200 even if some of the sub/unsub changes
         // produced errors.
         // I have observed it return a 400 Bad Request with an error response
@@ -212,25 +252,25 @@ public with sharing class MailchimpSyncManager {
         HttpResponse resp = this.pushContactFields(contacts);
         if (resp.getStatusCode() != 200) {
             // TODO: Log errors to expose to user after redirect
-            this.reportError('Mailchimp batch sub/unsub call', resp.getBody());
-            return false;
+            result.requestError = this.reportError(STAGE_BATCH_SUB_UNSUB, resp.getBody());
+            return result;
         }
-        if (!this.parseContactFieldsErrors(contacts, resp.getBody(), contactErrors)) {
-            return false;
+        if (!this.parseContactFieldsErrors(contacts, resp.getBody(), result)) {
+            return result;
         }
 
         // TODO: Record batch ID to check/match up w/webhook later
-        HttpResponse tagsResp = this.pushContactTags(contacts, contactErrors);
+        HttpResponse tagsResp = this.pushContactTags(contacts, result);
         if (tagsResp.getStatusCode() != 200) {
             // TODO: Log errors to expose to user after redirect
-            this.reportError('Mailchimp batch tags call', tagsResp.getBody());
-            return false;
+            result.requestError = this.reportError(STAGE_BATCH_TAG, tagsResp.getBody());
+            return result;
         }
 
         // TODO: Log errors to expose to user after redirect
         // Maybe a lookup relationship on Contact to an error log table?
         // | ContactID | SyncDate | SyncStage | StatusCode | ErrorMessage | ...
 
-        return true;
+        return result;
     }
 }

@@ -34,9 +34,9 @@ private class MailchimpSyncManagerTest {
 
         List<Contact> contacts = new List<Contact>{ testContact };
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        Map<String, String> contactErrors = new Map<String, String>();
-        System.assert(mailchimp.pushAll(contacts, contactErrors));
-        System.assert(contactErrors.isEmpty());
+        MailchimpSyncManager.Result result = mailchimp.pushAll(contacts);
+        System.assert(!result.isError());
+        System.assert(result.contactErrors.isEmpty());
 
         Test.stopTest();
     }
