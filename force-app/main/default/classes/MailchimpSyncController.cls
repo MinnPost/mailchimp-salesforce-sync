@@ -104,11 +104,21 @@ public with sharing class MailchimpSyncController {
             body.writeStringField('SF_CONTACT', c.Id);
             body.writeStringField('SF_ACCOUNT', c.Account.Id);
             body.writeStringField('SFACCTTYPE', c.Account.SF_Record_Type__c);
-            body.writeNumberField('MEMLEV_NUM', c.Account.Membership_Level_Number__c);
-            body.writeStringField('MEMBER_LEV', c.Account.Membership_Level__c);
-            body.writeNumberField('MEMLEV_AMT', c.Account.Membership_level_qualification_amount__c);
-            body.writeDateTimeField('MEMBER_EXP', c.Account.Membership_Expiration_Date__c);
-            body.writeNumberField('RECURR_AMT', c.Account.Recurring_donations_Annualized_value_new__c);
+            if (c.Account.Membership_Level_Number__c != null) {
+                body.writeNumberField('MEMLEV_NUM', c.Account.Membership_Level_Number__c);
+            }
+            if (c.Account.Membership_Level__c != null) {
+                body.writeStringField('MEMBER_LEV', c.Account.Membership_Level__c);
+            }
+            if (c.Account.Membership_level_qualification_amount__c != null) {
+                body.writeNumberField('MEMLEV_AMT', c.Account.Membership_level_qualification_amount__c);
+            }
+            if (c.Account.Membership_Expiration_Date__c != null) {
+                body.writeDateTimeField('MEMBER_EXP', c.Account.Membership_Expiration_Date__c);
+            }
+            if (c.Account.Recurring_donations_Annualized_value_new__c != null) {
+                body.writeNumberField('RECURR_AMT', c.Account.Recurring_donations_Annualized_value_new__c);
+            }
             if (c.FirstName != null) {
                 body.writeStringField('FNAME', c.FirstName);
             }
