@@ -22,9 +22,6 @@ public with sharing class MailchimpSyncController {
     }
 
     private List<Contact> contactsToSync(Integer lim) {
-        // Depends on the MailchimpNeedsSync__c custom field, which is a formula defined as:
-        //     ISBLANK(MailchimpLastSyncedAt__c) || MailchimpLastSyncedAt__c - LastModifiedDate > 0
-        // where MailchimpLastSyncedAt__c is a custom field that the sync process sets [will set].
         String query = 'SELECT ID, Email, FirstName, LastName, Account.ID, Account.SF_Record_Type__c,' +
             ' Account.Membership_Level_Number__c, Account.Membership_Level__c,' +
             ' Account.Membership_level_qualification_amount__c, Account.Membership_Expiration_Date__c,' +
