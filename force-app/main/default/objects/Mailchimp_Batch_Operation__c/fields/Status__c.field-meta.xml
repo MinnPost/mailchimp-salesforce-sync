@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <defaultValue>&quot;pending&quot;</defaultValue>
+    <description>The status of the batch call.</description>
+    <externalId>false</externalId>
+    <label>Status</label>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>pending</fullName>
+                <default>false</default>
+                <label>pending</label>
+            </value>
+            <value>
+                <fullName>preprocessing</fullName>
+                <default>false</default>
+                <label>preprocessing</label>
+            </value>
+            <value>
+                <fullName>started</fullName>
+                <default>false</default>
+                <label>started</label>
+            </value>
+            <value>
+                <fullName>finalizing</fullName>
+                <default>false</default>
+                <label>finalizing</label>
+            </value>
+            <value>
+                <fullName>finished</fullName>
+                <default>false</default>
+                <label>finished</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
