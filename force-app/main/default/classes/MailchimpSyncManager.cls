@@ -243,6 +243,65 @@ public with sharing class MailchimpSyncManager {
         return this.postToMailchimp('batches', body.getAsString());
     }
 
+    private Boolean parseBatchResponse(String respBody, Result result) {
+        JSONParser parser = JSON.createParser(respBody);
+        if (parser.nextToken() != JSONToken.START_OBJECT) {
+            System.debug(LoggingLevel.ERROR,
+                'Error parsing Mailchimp response: expected ' + JSONToken.START_OBJECT +
+                ', got ' + parser.getCurrentToken()
+            );
+            result.requestError = new Mailchimp_Sync_Error__c(
+                Stage__c=STAGE_BATCH_TAG,
+                Title__c='Error parsing Mailchimp response',
+                Detail__c='expected ' + JSONToken.START_OBJECT + ', got ' + parser.getCurrentToken()
+            );
+            insert result.requestError;
+            return false;
+        }
+
+        Mailchimp_Batch_Operation__c batch = new Mailchimp_Batch_Operation__c();
+        while (parser.nextValue() != null) {
+            switch on parser.getCurrentName() {
+                when 'id' {
+                    batch.Name = parser.getText();
+                }
+                when 'status' {
+                    batch.Status__c = parser.getText();
+                }
+                when 'submitted_at' {
+                    if (parser.getText() != '') {
+                        batch.Submitted_At__c = parser.getDateTimeValue();
+                    }
+                }
+                when 'completed_at' {
+                    if (parser.getText() != '') {
+                        batch.Completed_At__c = parser.getDateTimeValue();
+                    }
+                }
+                when 'total_operations' {
+                    batch.Total_Operations__c = parser.getIntegerValue();
+                }
+                when 'finished_operations' {
+                    batch.Finished_Operations__c = parser.getIntegerValue();
+                }
+                when 'errored_operations' {
+                    batch.Errored_Operations__c = parser.getIntegerValue();
+                }
+                when 'response_body_url' {
+                    batch.Response_Body_URL__c = parser.getText();
+                }
+                when else {
+                    if (parser.getCurrentToken() == JSONToken.START_OBJECT ||
+                        parser.getCurrentToken() == JSONToken.START_ARRAY) {
+                        parser.skipChildren();
+                    }
+                }
+            }
+        }
+        insert batch;
+        return true;
+    }
+
     public Result pushAll(List<Contact> contacts) {
         Result result = new Result();
 
@@ -265,6 +324,9 @@ public with sharing class MailchimpSyncManager {
         if (tagsResp.getStatusCode() != 200) {
             // TODO: Log errors to expose to user after redirect
             result.requestError = this.reportError(STAGE_BATCH_TAG, tagsResp.getBody());
+            return result;
+        }
+        if (!this.parseBatchResponse(tagsResp.getBody(), result)) {
             return result;
         }
 
