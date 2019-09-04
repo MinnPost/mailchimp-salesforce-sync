@@ -131,38 +131,38 @@ public with sharing class MailchimpSyncManager {
         return this.postToMailchimp(this.listEndpoint(), body.getAsString());
     }
 
-    private Boolean parseContactFieldsErrors(List<Contact> contacts, String respBody, Result result) {
-        JSONParser fieldErrParser = JSON.createParser(respBody);
-        if (fieldErrParser.nextToken() != JSONToken.START_OBJECT) {
+    private Boolean parseContactFieldsResponse(Contact[] contacts, String respBody, Result result) {
+        JSONParser parser = JSON.createParser(respBody);
+        if (parser.nextToken() != JSONToken.START_OBJECT) {
             System.debug(LoggingLevel.ERROR,
                 'Error parsing Mailchimp response: expected ' + JSONToken.START_OBJECT +
-                ', got ' + fieldErrParser.getCurrentToken());
+                ', got ' + parser.getCurrentToken());
             result.requestError = new Mailchimp_Sync_Error__c(
                 Stage__c=STAGE_BATCH_SUB_UNSUB,
                 Title__c='Error parsing Mailchimp response',
-                Detail__c='expected ' + JSONToken.START_OBJECT + ', got ' + fieldErrParser.getCurrentToken()
+                Detail__c='expected ' + JSONToken.START_OBJECT + ', got ' + parser.getCurrentToken()
             );
             insert result.requestError;
             return false;
         }
 
-        while (fieldErrParser.nextValue() != null) {
-            switch on fieldErrParser.getCurrentName() {
+        while (parser.nextValue() != null) {
+            switch on parser.getCurrentName() {
                 when 'total_created' {
-                    result.totalCreated = fieldErrParser.getIntegerValue();
+                    result.totalCreated = parser.getIntegerValue();
                 }
                 when 'total_updated' {
-                    result.totalUpdated = fieldErrParser.getIntegerValue();
+                    result.totalUpdated = parser.getIntegerValue();
                 }
                 when 'error_count' {
-                    result.errorCount = fieldErrParser.getIntegerValue();
+                    result.errorCount = parser.getIntegerValue();
                 }
                 when 'errors' {
-                    System.assert(fieldErrParser.getCurrentToken() == JSONToken.START_ARRAY);
-                    while (fieldErrParser.nextToken() != JSONToken.END_ARRAY) {
+                    System.assert(parser.getCurrentToken() == JSONToken.START_ARRAY);
+                    while (parser.nextToken() != JSONToken.END_ARRAY) {
                         BatchEmailError error =
-                            (BatchEmailError)fieldErrParser.readValueAsStrict(BatchEmailError.class);
-                        fieldErrParser.skipChildren();
+                            (BatchEmailError)parser.readValueAsStrict(BatchEmailError.class);
+                        parser.skipChildren();
                         String email = error.email_address;
                         Id cId = [SELECT Id FROM Contact WHERE Email = :email LIMIT 1].Id;
                         result.contactErrors.put(
@@ -176,9 +176,9 @@ public with sharing class MailchimpSyncManager {
                     }
                 }
                 when else {
-                    if (fieldErrParser.getCurrentToken() == JSONToken.START_OBJECT ||
-                        fieldErrParser.getCurrentToken() == JSONToken.START_ARRAY) {
-                        fieldErrParser.skipChildren();
+                    if (parser.getCurrentToken() == JSONToken.START_OBJECT ||
+                        parser.getCurrentToken() == JSONToken.START_ARRAY) {
+                        parser.skipChildren();
                     }
                 }
             }
@@ -256,7 +256,7 @@ public with sharing class MailchimpSyncManager {
             result.requestError = this.reportError(STAGE_BATCH_SUB_UNSUB, resp.getBody());
             return result;
         }
-        if (!this.parseContactFieldsErrors(contacts, resp.getBody(), result)) {
+        if (!this.parseContactFieldsResponse(contacts, resp.getBody(), result)) {
             return result;
         }
 
