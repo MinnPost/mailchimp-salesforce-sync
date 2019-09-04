@@ -50,6 +50,19 @@ public with sharing class MailchimpSyncManager {
         return this.listEndpoint() + '/members/' + subscriberHash + '/tags';
     }
 
+    private HttpResponse getFromMailchimp(String endpoint) {
+        if (this.connection == null) {
+            this.connection = new Http();
+        }
+
+        HttpRequest req = new HttpRequest();
+        req.setMethod('GET');
+        req.setEndpoint('callout:Mailchimp/' + endpoint);
+        req.setTimeout(30000);
+
+        return this.connection.send(req);
+    }
+
     private HttpResponse postToMailchimp(String endpoint, String body) {
         if (this.connection == null) {
             this.connection = new Http();
@@ -243,6 +256,10 @@ public with sharing class MailchimpSyncManager {
     }
 
     private Boolean parseBatchResponse(String respBody, Result result) {
+        return this.parseBatchResponse(respBody, result, new Mailchimp_Batch_Operation__c());
+    }
+
+    private Boolean parseBatchResponse(String respBody, Result result, Mailchimp_Batch_Operation__c batch) {
         JSONParser parser = JSON.createParser(respBody);
         if (parser.nextToken() != JSONToken.START_OBJECT) {
             System.debug(LoggingLevel.ERROR,
@@ -258,7 +275,6 @@ public with sharing class MailchimpSyncManager {
             return false;
         }
 
-        Mailchimp_Batch_Operation__c batch = new Mailchimp_Batch_Operation__c();
         while (parser.nextValue() != null) {
             switch on parser.getCurrentName() {
                 when 'id' {
@@ -297,7 +313,7 @@ public with sharing class MailchimpSyncManager {
                 }
             }
         }
-        insert batch;
+        upsert batch;
         return true;
     }
 
@@ -326,6 +342,34 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
 
+        return result;
+    }
+
+    public Result updateBatch(String batchId) {
+        Mailchimp_Batch_Operation__c batch =
+            [SELECT Id, Name, Status__c, Submitted_At__c, Completed_At__c,
+                    Total_Operations__c, Finished_Operations__c, Errored_Operations__c,
+                    Response_Body_URL__c
+             FROM Mailchimp_Batch_Operation__c WHERE Name = :batchId LIMIT 1];
+        Result result = new Result();
+
+        HttpResponse resp = this.getFromMailchimp('batches/' + batchId);
+        if (resp.getStatusCode() != 200) {
+            JSONParser parser = JSON.createParser(resp.getBody());
+            MailchimpErrorResponse error =
+                (MailchimpErrorResponse)parser.readValueAsStrict(MailchimpErrorResponse.class);
+            result.requestError = new Mailchimp_Sync_Error__c(
+                Stage__c=STAGE_BATCH_TAG,
+                Status_Code__c=String.valueOf(error.status),
+                Title__c=error.title,
+                Detail__c=error.detail
+            );
+            return result;
+        }
+
+        if (!this.parseBatchResponse(resp.getBody(), result, batch)) {
+            return result;
+        }
 
         return result;
     }
