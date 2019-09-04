@@ -239,7 +239,6 @@ public with sharing class MailchimpSyncManager {
 
         // This call will return pretty much immediately, since the batch
         // operations are queued up to happen asynchronously.
-        // TODO: Record batch ID to check/match up w/webhook later
         return this.postToMailchimp('batches', body.getAsString());
     }
 
@@ -311,7 +310,6 @@ public with sharing class MailchimpSyncManager {
         // if there are duplicate e-mails in the list.
         HttpResponse resp = this.pushContactFields(contacts);
         if (resp.getStatusCode() != 200) {
-            // TODO: Log errors to expose to user after redirect
             result.requestError = this.reportError(STAGE_BATCH_SUB_UNSUB, resp.getBody());
             return result;
         }
@@ -319,10 +317,8 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
 
-        // TODO: Record batch ID to check/match up w/webhook later
         HttpResponse tagsResp = this.pushContactTags(contacts, result);
         if (tagsResp.getStatusCode() != 200) {
-            // TODO: Log errors to expose to user after redirect
             result.requestError = this.reportError(STAGE_BATCH_TAG, tagsResp.getBody());
             return result;
         }
@@ -330,9 +326,6 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
 
-        // TODO: Log errors to expose to user after redirect
-        // Maybe a lookup relationship on Contact to an error log table?
-        // | ContactID | SyncDate | SyncStage | StatusCode | ErrorMessage | ...
 
         return result;
     }
