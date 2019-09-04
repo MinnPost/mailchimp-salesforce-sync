@@ -43,6 +43,7 @@ public with sharing class MailchimpSyncController {
             return redirect;
         }
 
+        System.debug(result);
 
         // Mark contacts as synced
         // TODO: I've observed this fail because of a Flow Trigger blowing over

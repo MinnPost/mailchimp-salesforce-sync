@@ -22,6 +22,9 @@ public with sharing class MailchimpSyncManager {
     }
 
     public class Result {
+        public Integer totalCreated = 0;
+        public Integer totalUpdated = 0;
+        public Integer errorCount = 0;
         public Mailchimp_Sync_Error__c requestError;
         public Map<String, Mailchimp_Sync_Error__c> contactErrors { get; private set; }
 
@@ -143,17 +146,16 @@ public with sharing class MailchimpSyncManager {
             return false;
         }
 
-        Integer totalCreated = 0, totalUpdated = 0, errorCount = 0;
         while (fieldErrParser.nextValue() != null) {
             switch on fieldErrParser.getCurrentName() {
                 when 'total_created' {
-                    totalCreated = fieldErrParser.getIntegerValue();
+                    result.totalCreated = fieldErrParser.getIntegerValue();
                 }
                 when 'total_updated' {
-                    totalUpdated = fieldErrParser.getIntegerValue();
+                    result.totalUpdated = fieldErrParser.getIntegerValue();
                 }
                 when 'error_count' {
-                    errorCount = fieldErrParser.getIntegerValue();
+                    result.errorCount = fieldErrParser.getIntegerValue();
                 }
                 when 'errors' {
                     System.assert(fieldErrParser.getCurrentToken() == JSONToken.START_ARRAY);
@@ -181,7 +183,6 @@ public with sharing class MailchimpSyncManager {
                 }
             }
         }
-        System.debug(totalCreated + ' contacts added, ' + totalUpdated + ' updated, ' + errorCount + ' errors');
 
         return true;
     }
