@@ -42,7 +42,7 @@ public with sharing class MailchimpSyncController {
         // - Need subset of fields, plus account ID & type (Household)
         // - Contact might not have e-mail address, in which case exclude from sync?
         // - Can add last-synced date, compare against last-modified date
-        List<Contact> contacts = this.contactsToSync(500);
+        List<Contact> contacts = this.contactsToSync(400);
         DateTime lastSyncedAt = DateTime.now();
 
         PageReference redirect = ApexPages.currentPage();
