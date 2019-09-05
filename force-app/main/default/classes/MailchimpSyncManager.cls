@@ -37,46 +37,6 @@ public with sharing class MailchimpSyncManager {
         }
     }
 
-    private Http connection;
-
-    private String listEndpoint() {
-        return 'lists/3528e74526';
-    }
-
-    private String contactTagsEndpoint(Contact c) {
-        Blob input = Blob.valueOf(c.Email.toLowerCase());
-        Blob emailDigest = Crypto.generateDigest('MD5', input);
-        String subscriberHash = EncodingUtil.convertToHex(emailDigest);
-        return this.listEndpoint() + '/members/' + subscriberHash + '/tags';
-    }
-
-    private HttpResponse getFromMailchimp(String endpoint) {
-        if (this.connection == null) {
-            this.connection = new Http();
-        }
-
-        HttpRequest req = new HttpRequest();
-        req.setMethod('GET');
-        req.setEndpoint('callout:Mailchimp/' + endpoint);
-        req.setTimeout(30000);
-
-        return this.connection.send(req);
-    }
-
-    private HttpResponse postToMailchimp(String endpoint, String body) {
-        if (this.connection == null) {
-            this.connection = new Http();
-        }
-
-        HttpRequest req = new HttpRequest();
-        req.setMethod('POST');
-        req.setEndpoint('callout:Mailchimp/' + endpoint);
-        req.setBody(body);
-        req.setTimeout(120000);
-
-        return this.connection.send(req);
-    }
-
     private Mailchimp_Sync_Error__c reportError(String stage, String respBody) {
         JSONParser parser = JSON.createParser(respBody);
         MailchimpErrorResponse error =
@@ -141,7 +101,8 @@ public with sharing class MailchimpSyncManager {
         body.writeBooleanField('update_existing', true);
         body.writeEndObject();
 
-        return this.postToMailchimp(this.listEndpoint(), body.getAsString());
+        MailchimpAPI mailchimp = new MailchimpAPI();
+        return mailchimp.post(mailchimp.listEndpoint(), body.getAsString());
     }
 
     private Boolean parseContactFieldsResponse(Contact[] contacts, String respBody, Result result) {
@@ -218,6 +179,8 @@ public with sharing class MailchimpSyncManager {
         // operations are queued up to happen asynchronously.
         JSONGenerator body = JSON.createGenerator(false);
         JSONGenerator tagsBody;
+        MailchimpAPI mailchimp = new MailchimpAPI();
+
         body.writeStartObject();
         body.writeFieldName('operations');
         body.writeStartArray();
@@ -241,7 +204,7 @@ public with sharing class MailchimpSyncManager {
 
             body.writeStartObject();
             body.writeStringField('method', 'POST');
-            body.writeStringField('path', this.contactTagsEndpoint(c));
+            body.writeStringField('path', mailchimp.contactTagsEndpoint(c));
             body.writeStringField('body', tagsBody.getAsString());
             body.writeStringField('operation_id', c.Id);
 
@@ -252,7 +215,7 @@ public with sharing class MailchimpSyncManager {
 
         // This call will return pretty much immediately, since the batch
         // operations are queued up to happen asynchronously.
-        return this.postToMailchimp('batches', body.getAsString());
+        return mailchimp.post('batches', body.getAsString());
     }
 
     private Boolean parseBatchResponse(String respBody, Result result) {
@@ -353,7 +316,8 @@ public with sharing class MailchimpSyncManager {
              FROM Mailchimp_Batch_Operation__c WHERE Name = :batchId LIMIT 1];
         Result result = new Result();
 
-        HttpResponse resp = this.getFromMailchimp('batches/' + batchId);
+        MailchimpAPI mailchimp = new MailchimpAPI();
+        HttpResponse resp = mailchimp.get('batches/' + batchId);
         if (resp.getStatusCode() != 200) {
             JSONParser parser = JSON.createParser(resp.getBody());
             MailchimpErrorResponse error =
