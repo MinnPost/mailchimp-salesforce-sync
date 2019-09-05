@@ -1,9 +1,20 @@
-<apex:page controller="MailchimpSyncController" action="{!fetchContacts}">
-    <h1>MinnPost Mailchimp Sync</h1>
+<apex:page controller="MailchimpSyncController" action="{!fetchData}">
     <apex:pageMessages showDetail="TRUE" />
+    <apex:pageBlock title="Recent sync errors">
+        <apex:pageBlockTable var="syncError" value="{!recentSyncErrors}">
+            <apex:column value="{!syncError.CreatedDate}" />
+            <apex:column>
+                <apex:outputLink value="{!URLFOR($Action.Mailchimp_Sync_Error__c.View, syncError.Id)}">{!syncError.Name}</apex:outputLink>
+            </apex:column>
+            <apex:column value="{!syncError.Stage__c}" />
+            <apex:column value="{!syncError.Contact__c}" />
+            <apex:column value="{!syncError.Title__c}" />
+            <apex:column value="{!syncError.Detail__c}" />
+        </apex:pageBlockTable>
+    </apex:pageBlock>
     <apex:form>
-        <apex:commandButton action="{!pushContacts}" value="Push next 500 contacts to Mailchimp" />
-        <apex:pageBlock>
+        <apex:pageBlock title="Contacts to be synced">
+            <apex:commandButton action="{!pushContacts}" value="Push next 500 contacts to Mailchimp" />
             <apex:pageBlockTable var="contact" value="{!contactList}">
                 <apex:column>
                     <apex:facet name="header">E-mail address</apex:facet>

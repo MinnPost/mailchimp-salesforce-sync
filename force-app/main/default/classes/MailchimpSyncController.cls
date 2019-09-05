@@ -1,5 +1,6 @@
 public with sharing class MailchimpSyncController {
     public List<Contact> contactList { get; private set; }
+    public List<Mailchimp_Sync_Error__c> recentSyncErrors { get; private set; }
 
     private List<Contact> contactsToSync() {
         return this.contactsToSync(null);
@@ -22,8 +23,12 @@ public with sharing class MailchimpSyncController {
         return Database.query(query);
     }
 
-    public void fetchContacts() {
+    public void fetchData() {
         this.contactList = this.contactsToSync(50);
+        this.recentSyncErrors =
+            [SELECT Id, Name, CreatedDate, Stage__c, Contact__c, Title__c, Detail__c
+             FROM Mailchimp_Sync_Error__c
+             ORDER BY CreatedDate DESC LIMIT 20];
     }
 
     public PageReference pushContacts() {
