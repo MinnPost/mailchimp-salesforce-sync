@@ -1,6 +1,7 @@
 public with sharing class MailchimpSyncController {
     public List<Contact> contactList { get; private set; }
     public List<Mailchimp_Sync_Error__c> recentSyncErrors { get; private set; }
+    public List<Mailchimp_Batch_Operation__c> unfinishedBatchOperations { get; private set; }
 
     private List<Contact> contactsToSync() {
         return this.contactsToSync(null);
@@ -29,6 +30,11 @@ public with sharing class MailchimpSyncController {
             [SELECT Id, Name, CreatedDate, Stage__c, Contact__c, Title__c, Detail__c
              FROM Mailchimp_Sync_Error__c
              ORDER BY CreatedDate DESC LIMIT 20];
+        this.unfinishedBatchOperations =
+            [SELECT Id, Name, Status__c, Submitted_At__c
+             FROM Mailchimp_Batch_Operation__c
+             WHERE Status__c <> 'finished'
+             ORDER BY Submitted_At__C DESC LIMIT 20];
     }
 
     public PageReference pushContacts() {
