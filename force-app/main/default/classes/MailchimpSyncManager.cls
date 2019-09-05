@@ -73,6 +73,12 @@ public with sharing class MailchimpSyncManager {
             body.writeStringField('SF_CONTACT', c.Id);
             body.writeStringField('SF_ACCOUNT', c.Account.Id);
             body.writeStringField('SFACCTTYPE', c.Account.SF_Record_Type__c);
+            if (c.FirstName != null) {
+                body.writeStringField('FNAME', c.FirstName);
+            }
+            if (c.LastName != null) {
+                body.writeStringField('LNAME', c.LastName);
+            }
             if (c.Account.Membership_Level_Number__c != null) {
                 body.writeNumberField('MEMLEV_NUM', c.Account.Membership_Level_Number__c);
             }
@@ -88,11 +94,11 @@ public with sharing class MailchimpSyncManager {
             if (c.Account.Recurring_donations_Annualized_value_new__c != null) {
                 body.writeNumberField('RECURR_AMT', c.Account.Recurring_donations_Annualized_value_new__c);
             }
-            if (c.FirstName != null) {
-                body.writeStringField('FNAME', c.FirstName);
+            if (c.Drupal_ID__c != null) {
+                body.writeStringField('CMS_UID', c.Drupal_ID__c);
             }
-            if (c.LastName != null) {
-                body.writeStringField('LNAME', c.LastName);
+            if (c.Drupal_Username__c != null) {
+                body.writeStringField('CMS_USER', c.Drupal_Username__c);
             }
             body.writeEndObject();
             body.writeEndObject();

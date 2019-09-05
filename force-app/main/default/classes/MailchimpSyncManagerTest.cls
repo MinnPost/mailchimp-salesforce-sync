@@ -22,7 +22,8 @@ private class MailchimpSyncManagerTest {
 
         Test.startTest();
         Id cId = c.Id;
-        Contact testContact = [SELECT Id, Email, FirstName, LastName, Account.Id, Account.SF_Record_Type__c,
+        Contact testContact = [SELECT Id, Email, FirstName, LastName, Drupal_ID__c, Drupal_Username__c,
+            Account.Id, Account.SF_Record_Type__c,
             Account.Membership_Level_Number__c, Account.Membership_Level__c,
             Account.Membership_level_qualification_amount__c, Account.Membership_Expiration_Date__c,
             Account.Recurring_donations_Annualized_value_new__c,

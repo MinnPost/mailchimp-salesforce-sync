@@ -8,7 +8,8 @@ public with sharing class MailchimpSyncController {
     }
 
     private List<Contact> contactsToSync(Integer lim) {
-        String query = 'SELECT ID, Email, FirstName, LastName, Account.ID, Account.SF_Record_Type__c,' +
+        String query = 'SELECT ID, Email, FirstName, LastName, Drupal_ID__c, Drupal_Username__c,' +
+            ' Account.ID, Account.SF_Record_Type__c,' +
             ' Account.Membership_Level_Number__c, Account.Membership_Level__c,' +
             ' Account.Membership_level_qualification_amount__c, Account.Membership_Expiration_Date__c,' +
             ' Account.Recurring_donations_Annualized_value_new__c,' +
