@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>MailchimpEmailHash__c</fullName>
+    <description>The MD5 hash of the lowercase version of the contact&#39;s e-mail address, used as an identifier by the Mailchimp API.</description>
+    <externalId>true</externalId>
+    <label>Mailchimp Email Hash</label>
+    <length>32</length>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

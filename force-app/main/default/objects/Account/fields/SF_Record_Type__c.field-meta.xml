@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SF_Record_Type__c</fullName>
+    <description>Returns the text label for the account&#39;s Record Type</description>
+    <externalId>false</externalId>
+    <formula>CASE(RecordTypeId,
+  &quot;012F00000013RqN&quot;,&quot;Household Account&quot;,
+  &quot;012F00000013RqO&quot;,&quot;Organization&quot;,
+  &quot;[unknown]&quot;
+)</formula>
+    <inlineHelpText>Returns the text label for the account&#39;s Record Type</inlineHelpText>
+    <label>SF Record Type</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
