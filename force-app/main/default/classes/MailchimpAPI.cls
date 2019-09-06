@@ -1,12 +1,35 @@
 public class MailchimpAPI {
     private Http connection;
 
+    public class Interest {
+        public String id;
+        public String name;
+        public Long subscriber_count;
+        public Integer display_order;
+    }
+
+    public class InterestCategory {
+        public String id;
+        public String title;
+        public String type;
+        public Integer display_order;
+        public List<Interest> interests;
+
+        public InterestCategory() {
+            this.interests = new List<Interest>();
+        }
+    }
+
     public String listEndpoint() {
         return 'lists/3528e74526';
     }
 
     public String membersEndpoint() {
         return this.listEndpoint() + '/members';
+    }
+
+    public String interestCategoriesEndpoint() {
+        return this.listEndpoint() + '/interest-categories';
     }
 
     public String contactTagsEndpoint(Contact c) {

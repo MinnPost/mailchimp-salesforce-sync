@@ -343,4 +343,81 @@ public with sharing class MailchimpSyncManager {
 
         return result;
     }
+
+    public List<MailchimpAPI.Interest> pullInterestsInCategory(String categoryId) {
+        List<MailchimpAPI.Interest> interests = new List<MailchimpAPI.Interest>();
+        MailchimpAPI mailchimp = new MailchimpAPI();
+        HttpResponse resp = mailchimp.get(mailchimp.interestCategoriesEndpoint() + '/' + categoryId + '/interests');
+        if (resp.getStatusCode() != 200) {
+            JSONParser parser = JSON.createParser(resp.getBody());
+            MailchimpErrorResponse error =
+                (MailchimpErrorResponse)parser.readValueAsStrict(MailchimpErrorResponse.class);
+            System.debug(LoggingLevel.ERROR, error);
+            return interests;
+        }
+
+        JSONParser parser = JSON.createParser(resp.getBody());
+        if (parser.nextToken() != JSONToken.START_OBJECT) {
+            System.debug('Can\'t parse response beginning with ' + parser.getCurrentToken());
+            return interests;
+        }
+        while (parser.nextValue() != null) {
+            switch on parser.getCurrentName() {
+                when 'interests' {
+                    while (parser.nextToken() != JSONToken.END_ARRAY) {
+                        MailchimpAPI.Interest interest =
+                            (MailchimpAPI.Interest)parser.readValueAs(MailchimpAPI.Interest.class);
+                        interests.add(interest);
+                    }
+                }
+                when else {
+                    if (parser.getCurrentToken() == JSONToken.START_OBJECT ||
+                        parser.getCurrentToken() == JSONToken.START_ARRAY) {
+                        parser.skipChildren();
+                    }
+                }
+            }
+        }
+
+        return interests;
+    }
+
+    public List<MailchimpAPI.InterestCategory> pullInterests() {
+        List<MailchimpAPI.InterestCategory> interestCategories = new List<MailchimpAPI.InterestCategory>();
+        MailchimpAPI mailchimp = new MailchimpAPI();
+        HttpResponse resp = mailchimp.get(mailchimp.interestCategoriesEndpoint());
+        if (resp.getStatusCode() != 200) {
+            JSONParser parser = JSON.createParser(resp.getBody());
+            MailchimpErrorResponse error =
+                (MailchimpErrorResponse)parser.readValueAsStrict(MailchimpErrorResponse.class);
+            System.debug(LoggingLevel.ERROR, error);
+            return interestCategories;
+        }
+
+        JSONParser parser = JSON.createParser(resp.getBody());
+        if (parser.nextToken() != JSONToken.START_OBJECT) {
+            System.debug('Can\'t parse response beginning with ' + parser.getCurrentToken());
+            return interestCategories;
+        }
+        while (parser.nextValue() != null) {
+            switch on parser.getCurrentName() {
+                when 'categories' {
+                    while (parser.nextToken() != JSONToken.END_ARRAY) {
+                        MailchimpAPI.InterestCategory category =
+                            (MailchimpAPI.InterestCategory)parser.readValueAs(MailchimpAPI.InterestCategory.class);
+                        category.interests = this.pullInterestsInCategory(category.id);
+                        interestCategories.add(category);
+                    }
+                }
+                when else {
+                    if (parser.getCurrentToken() == JSONToken.START_OBJECT ||
+                        parser.getCurrentToken() == JSONToken.START_ARRAY) {
+                        parser.skipChildren();
+                    }
+                }
+            }
+        }
+
+        return interestCategories;
+    }
 }
