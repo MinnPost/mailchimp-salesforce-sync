@@ -32,7 +32,7 @@ public with sharing class MailchimpSyncManager {
     }
 
     class MembersResponse {
-        public MCSubscriber[] members;
+        public MailchimpAPI.Subscriber[] members;
     }
 
     public class Result {
@@ -188,14 +188,14 @@ public with sharing class MailchimpSyncManager {
         return true;
     }
 
-    private List<MCSubscriber> parseMembersResponse(String respBody) {
+    private List<MailchimpAPI.Subscriber> parseMembersResponse(String respBody) {
         JSONParser parser = JSON.createParser(respBody);
         try {
             MembersResponse response = (MembersResponse)parser.readValueAs(MembersResponse.class);
             return response.members;
         } catch (JSONException e) {
             System.debug(LoggingLevel.ERROR, e);
-            return new List<MCSubscriber>();
+            return new List<MailchimpAPI.Subscriber>();
         }
     }
 
@@ -438,9 +438,9 @@ public with sharing class MailchimpSyncManager {
             '?fields=total_items,members.id,members.email_address,members.status,members.member_rating,members.last_changed,members.merge_fields,members.interests' +
             '&count=' + count
         );
-        MCSubscriber[] members = this.parseMembersResponse(resp.getBody());
+        MailchimpAPI.Subscriber[] members = this.parseMembersResponse(resp.getBody());
         Contact[] contacts = new List<Contact>();
-        for (MCSubscriber member : members) {
+        for (MailchimpAPI.Subscriber member : members) {
             Contact c = new Contact(
                 Email=member.email_address,
                 MailchimpEmailHash__c=member.ID,
@@ -458,7 +458,7 @@ public with sharing class MailchimpSyncManager {
         for (Integer i = 0; i < results.size(); ++i) {
             Database.UpsertResult result = results[i];
             Contact c = contacts[i];
-            MCSubscriber member = members[i];
+            MailchimpAPI.Subscriber member = members[i];
 
             if (result.isSuccess()) continue;
             if (this.shouldRetry(result)) {

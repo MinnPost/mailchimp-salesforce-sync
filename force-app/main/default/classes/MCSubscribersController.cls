@@ -1,12 +1,12 @@
 public with sharing class MCSubscribersController {
     private Long totalSubscribers;
-    private List<MCSubscriber> subscribers = new List<MCSubscriber>();
+    private List<MailchimpAPI.Subscriber> subscribers = new List<MailchimpAPI.Subscriber>();
 
     public Long getTotalSubscribers() {
         return totalSubscribers;
     }
     
-    public List<MCSubscriber> getSubscribers() {
+    public List<MailchimpAPI.Subscriber> getSubscribers() {
         return subscribers;
     }
 
@@ -33,7 +33,7 @@ public with sharing class MCSubscribersController {
                     throw new TypeException('"members" in response was expected to be an array, got ' + parser.getCurrentToken());
                 }
                 while (parser.nextToken() == JSONToken.START_OBJECT) {
-                    this.subscribers.add((MCSubscriber)parser.readValueAs(MCSubscriber.class));
+                    this.subscribers.add((MailchimpAPI.Subscriber)parser.readValueAs(MailchimpAPI.Subscriber.class));
                 }
             }
         }
