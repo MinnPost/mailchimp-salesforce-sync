@@ -1,18 +1,4 @@
 public with sharing class MailchimpSyncManager {
-    static final String TAG_ACTIVE_SUSTAINER = 'Active sustainer';
-    static final String TAG_CMS_USER = 'CMS user';
-    static final String TAG_CURRENT_MEMBER = 'Current member';
-    static final String TAG_LAPSED_MEMBER = 'Lapsed member';
-    static final String TAG_NEVER_MEMBER = 'Never member';
-    static final String TAG_PARTNER_OFFER_ELIGIBLE = 'Partner offer eligible';
-    static final Map<String, String> TAG_FIELDS = new Map<String, String>{
-        TAG_ACTIVE_SUSTAINER => 'Active_sustainer_account__c',
-        TAG_CMS_USER => 'MinnPost_com_user_account__c',
-        TAG_CURRENT_MEMBER => 'Current_member__c',
-        TAG_LAPSED_MEMBER => 'Lapsed_member__c',
-        TAG_NEVER_MEMBER => 'Never_member__c',
-        TAG_PARTNER_OFFER_ELIGIBLE => 'Is_partner_offer_eligible__c'
-    };
     static final String STAGE_BATCH_SUB_UNSUB = '1 - Add/update contacts in Mailchimp';
     static final String STAGE_BATCH_TAG = '2 - Add/update tags in Mailchimp';
 
@@ -108,63 +94,6 @@ public with sharing class MailchimpSyncManager {
         }
 
         return true;
-    }
-
-    private void writeTagField(JSONGenerator tagsBody, Contact c, String tag) {
-        Boolean active = (Boolean)c.get(TAG_FIELDS.get(tag));
-        if (active == null) {
-            active = false;
-        }
-
-        tagsBody.writeStartObject();
-        tagsBody.writeStringField('name', tag);
-        tagsBody.writeStringField('status', active ? 'active' : 'inactive');
-        tagsBody.writeEndObject();
-    }
-
-    private HttpResponse pushContactTags(List<Contact> contacts, Set<String> contactErrors) {
-        // Sync boolean fields as tags using batch endpoint
-        // This call will return pretty much immediately, since the batch
-        // operations are queued up to happen asynchronously.
-        JSONGenerator body = JSON.createGenerator(false);
-        JSONGenerator tagsBody;
-        MailchimpAPI mailchimp = new MailchimpAPI();
-
-        body.writeStartObject();
-        body.writeFieldName('operations');
-        body.writeStartArray();
-        for (Contact c : contacts) {
-            if (contactErrors.contains(c.Email)) {
-                continue;
-            }
-
-            tagsBody = JSON.createGenerator(false);
-            tagsBody.writeStartObject();
-            tagsBody.writeFieldName('tags');
-            tagsBody.writeStartArray();
-            this.writeTagField(tagsBody, c, TAG_ACTIVE_SUSTAINER);
-            this.writeTagField(tagsBody, c, TAG_CMS_USER);
-            this.writeTagField(tagsBody, c, TAG_CURRENT_MEMBER);
-            this.writeTagField(tagsBody, c, TAG_LAPSED_MEMBER);
-            this.writeTagField(tagsBody, c, TAG_NEVER_MEMBER);
-            this.writeTagField(tagsBody, c, TAG_PARTNER_OFFER_ELIGIBLE);
-            tagsBody.writeEndArray();
-            tagsBody.writeEndObject();
-
-            body.writeStartObject();
-            body.writeStringField('method', 'POST');
-            body.writeStringField('path', mailchimp.contactTagsEndpoint(c));
-            body.writeStringField('body', tagsBody.getAsString());
-            body.writeStringField('operation_id', c.Id);
-
-            body.writeEndObject();
-        }
-        body.writeEndArray();
-        body.writeEndObject();
-
-        // This call will return pretty much immediately, since the batch
-        // operations are queued up to happen asynchronously.
-        return mailchimp.post('batches', body.getAsString());
     }
 
     private Boolean parseBatchResponse(String respBody, Result result) {
@@ -267,7 +196,7 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
 
-        HttpResponse tagsResp = this.pushContactTags(contacts, result.contactErrors.keySet());
+        HttpResponse tagsResp = mailchimp.pushContactTags(contacts, result.contactErrors.keySet());
         if (tagsResp.getStatusCode() != 200) {
             result.requestError = this.reportError(STAGE_BATCH_TAG, tagsResp.getBody());
             return result;
