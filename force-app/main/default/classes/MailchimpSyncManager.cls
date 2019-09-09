@@ -18,6 +18,17 @@ public with sharing class MailchimpSyncManager {
         public String error;
     }
 
+    class BatchResponse {
+        public String id;
+        public String status;
+        public Datetime submitted_at;
+        public String completed_at;
+        public Integer total_operations;
+        public Integer finished_operations;
+        public Integer errored_operations;
+        public String response_body_url;
+    }
+
     public class Result {
         public Integer totalCreated = 0;
         public Integer totalUpdated = 0;
@@ -93,58 +104,30 @@ public with sharing class MailchimpSyncManager {
 
     private Boolean parseBatchResponse(String respBody, Result result, Mailchimp_Batch_Operation__c batch) {
         JSONParser parser = JSON.createParser(respBody);
-        if (parser.nextToken() != JSONToken.START_OBJECT) {
-            System.debug(LoggingLevel.ERROR,
-                'Error parsing Mailchimp response: expected ' + JSONToken.START_OBJECT +
-                ', got ' + parser.getCurrentToken()
-            );
+        try {
+            BatchResponse response = (BatchResponse)parser.readValueAs(BatchResponse.class);
+            batch.Name = response.id;
+            batch.Status__c = response.status;
+            batch.Submitted_At__c = response.submitted_at;
+            if (response.completed_at != '') {
+                Datetime completedAt = (Datetime)JSON.deserialize('"' + response.completed_at + '"', Datetime.class);
+                batch.Completed_At__c = completedAt;
+            }
+            batch.Total_Operations__c = response.total_operations;
+            batch.Finished_Operations__c = response.finished_operations;
+            batch.Errored_Operations__c = response.errored_operations;
+            batch.Response_Body_URL__c = response.response_body_url;
+        } catch (JSONException e) {
+            System.debug(LoggingLevel.ERROR, e);
             result.requestError = new Mailchimp_Sync_Error__c(
                 Stage__c=STAGE_BATCH_TAG,
-                Title__c='Error parsing Mailchimp response',
-                Detail__c='expected ' + JSONToken.START_OBJECT + ', got ' + parser.getCurrentToken()
+                Title__c=e.getTypeName() + ' while parsing Mailchimp response',
+                Detail__c=e.getMessage()
             );
             insert result.requestError;
             return false;
         }
 
-        while (parser.nextValue() != null) {
-            switch on parser.getCurrentName() {
-                when 'id' {
-                    batch.Name = parser.getText();
-                }
-                when 'status' {
-                    batch.Status__c = parser.getText();
-                }
-                when 'submitted_at' {
-                    if (parser.getText() != '') {
-                        batch.Submitted_At__c = parser.getDateTimeValue();
-                    }
-                }
-                when 'completed_at' {
-                    if (parser.getText() != '') {
-                        batch.Completed_At__c = parser.getDateTimeValue();
-                    }
-                }
-                when 'total_operations' {
-                    batch.Total_Operations__c = parser.getIntegerValue();
-                }
-                when 'finished_operations' {
-                    batch.Finished_Operations__c = parser.getIntegerValue();
-                }
-                when 'errored_operations' {
-                    batch.Errored_Operations__c = parser.getIntegerValue();
-                }
-                when 'response_body_url' {
-                    batch.Response_Body_URL__c = parser.getText();
-                }
-                when else {
-                    if (parser.getCurrentToken() == JSONToken.START_OBJECT ||
-                        parser.getCurrentToken() == JSONToken.START_ARRAY) {
-                        parser.skipChildren();
-                    }
-                }
-            }
-        }
         upsert batch;
         return true;
     }
