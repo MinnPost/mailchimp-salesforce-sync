@@ -34,39 +34,7 @@ public with sharing class MailchimpSyncController {
         redirect.setRedirect(true);
 
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        MailchimpAPI.InterestCategory[] categories = mailchimp.pullInterests();
-
-        for (MailchimpAPI.InterestCategory c : categories) {
-            InterestCategory__c category = new InterestCategory__c(
-                CategoryID__c=c.id,
-                Name=c.title,
-                Type__c=c.type,
-                DisplayOrder__c=c.display_order
-            );
-            Database.upsert(category, InterestCategory__c.Fields.CategoryID__c);
-
-            Interest__c[] interests = new List<Interest__c>();
-            for (MailchimpAPI.Interest i : c.interests) {
-                Interest__c interest = new Interest__c(
-                    InterestID__c=i.id,
-                    Name=i.name,
-                    SubscriberCount__c=i.subscriber_count,
-                    DisplayOrder__c=i.display_order,
-                    InterestCategory__c=category.Id
-                );
-                interests.add(interest);
-            }
-
-            Database.UpsertResult[] results = Database.upsert(interests, Interest__c.Fields.InterestID__c, false);
-            for (Database.UpsertResult result : results) {
-                if (result.isSuccess()) continue;
-
-                System.debug('Error(s) inserting or updating contact.');
-                for (Database.Error err : result.getErrors()) {
-                    System.debug(err.getStatusCode() + ': ' + err.getMessage());
-                }
-            }
-        }
+        mailchimp.pullInterests();
 
         return redirect;
     }

@@ -291,7 +291,41 @@ public with sharing class MailchimpSyncManager {
         return interests;
     }
 
-    public List<MailchimpAPI.InterestCategory> pullInterests() {
+    private void upsertInterests(MailchimpAPI.InterestCategory[] categories) {
+        for (MailchimpAPI.InterestCategory c : categories) {
+            InterestCategory__c category = new InterestCategory__c(
+                CategoryID__c=c.id,
+                Name=c.title,
+                Type__c=c.type,
+                DisplayOrder__c=c.display_order
+            );
+            Database.upsert(category, InterestCategory__c.Fields.CategoryID__c);
+
+            Interest__c[] interests = new List<Interest__c>();
+            for (MailchimpAPI.Interest i : c.interests) {
+                Interest__c interest = new Interest__c(
+                    InterestID__c=i.id,
+                    Name=i.name,
+                    SubscriberCount__c=i.subscriber_count,
+                    DisplayOrder__c=i.display_order,
+                    InterestCategory__c=category.Id
+                );
+                interests.add(interest);
+            }
+
+            Database.UpsertResult[] results = Database.upsert(interests, Interest__c.Fields.InterestID__c, false);
+            for (Database.UpsertResult result : results) {
+                if (result.isSuccess()) continue;
+
+                System.debug('Error(s) creating/updating interest.');
+                for (Database.Error err : result.getErrors()) {
+                    System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                }
+            }
+        }
+    }
+
+    public void pullInterests() {
         List<MailchimpAPI.InterestCategory> interestCategories = new List<MailchimpAPI.InterestCategory>();
         MailchimpAPI mailchimp = new MailchimpAPI();
         HttpResponse resp = mailchimp.get(mailchimp.interestCategoriesEndpoint());
@@ -300,13 +334,13 @@ public with sharing class MailchimpSyncManager {
             MailchimpErrorResponse error =
                 (MailchimpErrorResponse)parser.readValueAsStrict(MailchimpErrorResponse.class);
             System.debug(LoggingLevel.ERROR, error);
-            return interestCategories;
+            return;
         }
 
         JSONParser parser = JSON.createParser(resp.getBody());
         if (parser.nextToken() != JSONToken.START_OBJECT) {
             System.debug('Can\'t parse response beginning with ' + parser.getCurrentToken());
-            return interestCategories;
+            return;
         }
         while (parser.nextValue() != null) {
             switch on parser.getCurrentName() {
@@ -327,7 +361,7 @@ public with sharing class MailchimpSyncManager {
             }
         }
 
-        return interestCategories;
+        this.upsertInterests(interestCategories);
     }
 
     public MCSubscriber[] pullAll(Integer count, Integer offset) {
