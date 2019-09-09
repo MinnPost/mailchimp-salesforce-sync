@@ -29,6 +29,10 @@ public with sharing class MailchimpSyncManager {
         public String response_body_url;
     }
 
+    class MembersResponse {
+        public MCSubscriber[] members;
+    }
+
     public class Result {
         public Integer totalCreated = 0;
         public Integer totalUpdated = 0;
@@ -133,24 +137,14 @@ public with sharing class MailchimpSyncManager {
     }
 
     private List<MCSubscriber> parseMembersResponse(String respBody) {
-        List<MCSubscriber> contacts = new List<MCSubscriber>();
         JSONParser parser = JSON.createParser(respBody);
-        if (parser.nextToken() != JSONToken.START_OBJECT) {
-            System.debug('Can\'t parse response beginning with ' + parser.getCurrentToken());
-            return contacts;
+        try {
+            MembersResponse response = (MembersResponse)parser.readValueAs(MembersResponse.class);
+            return response.members;
+        } catch (JSONException e) {
+            System.debug(LoggingLevel.ERROR, e);
+            return new List<MCSubscriber>();
         }
-        while (parser.nextValue() != null) {
-            if (parser.getCurrentName() == 'members') {
-                if (parser.getCurrentToken() != JSONToken.START_ARRAY) {
-                    throw new TypeException('"members" in response was expected to be an array, got ' + parser.getCurrentToken());
-                }
-                while (parser.nextToken() == JSONToken.START_OBJECT) {
-                    MCSubscriber member = (MCSubscriber)parser.readValueAs(MCSubscriber.class);
-                    contacts.add(member);
-                }
-            }
-        }
-        return contacts;
     }
 
     public Result pushAll(List<Contact> contacts) {
