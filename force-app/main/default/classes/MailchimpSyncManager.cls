@@ -122,7 +122,7 @@ public with sharing class MailchimpSyncManager {
         tagsBody.writeEndObject();
     }
 
-    private HttpResponse pushContactTags(List<Contact> contacts, Result result) {
+    private HttpResponse pushContactTags(List<Contact> contacts, Set<String> contactErrors) {
         // Sync boolean fields as tags using batch endpoint
         // This call will return pretty much immediately, since the batch
         // operations are queued up to happen asynchronously.
@@ -134,7 +134,7 @@ public with sharing class MailchimpSyncManager {
         body.writeFieldName('operations');
         body.writeStartArray();
         for (Contact c : contacts) {
-            if (result.contactErrors.containsKey(c.Email)) {
+            if (contactErrors.contains(c.Email)) {
                 continue;
             }
 
@@ -267,7 +267,7 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
 
-        HttpResponse tagsResp = this.pushContactTags(contacts, result);
+        HttpResponse tagsResp = this.pushContactTags(contacts, result.contactErrors.keySet());
         if (tagsResp.getStatusCode() != 200) {
             result.requestError = this.reportError(STAGE_BATCH_TAG, tagsResp.getBody());
             return result;
