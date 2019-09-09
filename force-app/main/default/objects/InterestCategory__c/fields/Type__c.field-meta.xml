@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Type__c</fullName>
+    <description>Determines how this category’s interests appear on signup forms.</description>
+    <externalId>false</externalId>
+    <label>Type</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>checkboxes</fullName>
+                <default>false</default>
+                <label>checkboxes</label>
+            </value>
+            <value>
+                <fullName>dropdown</fullName>
+                <default>false</default>
+                <label>dropdown</label>
+            </value>
+            <value>
+                <fullName>radio</fullName>
+                <default>false</default>
+                <label>radio</label>
+            </value>
+            <value>
+                <fullName>hidden</fullName>
+                <default>false</default>
+                <label>hidden</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
