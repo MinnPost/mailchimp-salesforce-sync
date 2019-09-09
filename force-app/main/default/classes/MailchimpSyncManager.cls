@@ -1,6 +1,8 @@
 public with sharing class MailchimpSyncManager {
     static final String STAGE_BATCH_SUB_UNSUB = '1 - Add/update contacts in Mailchimp';
     static final String STAGE_BATCH_TAG = '2 - Add/update tags in Mailchimp';
+    static final String STAGE_MARK_CONTACTS_SYNCED = '3 - Mark Salesforce contacts as synced';
+    static final String STAGE_UPDATE_BATCH_STATUS = '4 - Check Mailchimp batch job status';
 
     class ContactFieldsResponse {
         public Integer total_created;
@@ -72,6 +74,22 @@ public with sharing class MailchimpSyncManager {
         return Database.query(query);
     }
 
+    public Mailchimp_Batch_Operation__c[] unfinishedBatches() {
+        return this.unfinishedBatches(null);
+    }
+
+    public Mailchimp_Batch_Operation__c[] unfinishedBatches(Integer lim) {
+        String query = 'SELECT Id, Name, Status__c, Submitted_At__c, Completed_At__c,' +
+            ' Total_Operations__c, Finished_Operations__c, Errored_Operations__c,' +
+            ' Response_Body_URL__c' +
+            ' FROM Mailchimp_Batch_Operation__c WHERE Status__c <> \'finished\'' +
+            ' ORDER BY Submitted_At__C DESC';
+        if (lim != null) {
+            query += ' LIMIT ' + lim;
+        }
+        return Database.query(query);
+    }
+
     private Mailchimp_Sync_Error__c reportError(String stage, String respBody) {
         JSONParser parser = JSON.createParser(respBody);
         MailchimpErrorResponse error =
@@ -126,7 +144,12 @@ public with sharing class MailchimpSyncManager {
     }
 
     private Boolean parseBatchResponse(String respBody, Result result) {
-        return this.parseBatchResponse(respBody, result, new Mailchimp_Batch_Operation__c());
+        Mailchimp_Batch_Operation__c batch = new Mailchimp_Batch_Operation__c();
+        if (!this.parseBatchResponse(respBody, result, batch)) {
+            return false;
+        }
+        insert batch;
+        return true;
     }
 
     private Boolean parseBatchResponse(String respBody, Result result, Mailchimp_Batch_Operation__c batch) {
@@ -151,11 +174,9 @@ public with sharing class MailchimpSyncManager {
                 Title__c=e.getTypeName() + ' while parsing Mailchimp response',
                 Detail__c=e.getMessage()
             );
-            insert result.requestError;
             return false;
         }
 
-        upsert batch;
         return true;
     }
 
@@ -216,6 +237,7 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
         if (!this.parseBatchResponse(tagsResp.getBody(), result)) {
+            insert result.requestError;
             return result;
         }
 
@@ -223,22 +245,46 @@ public with sharing class MailchimpSyncManager {
         return result;
     }
 
-    public Result updateBatch(String batchId) {
+    public void updateBatches() {
+        Mailchimp_Batch_Operation__c[] batches = this.unfinishedBatches();
+
+        Mailchimp_Sync_Error__c[] errors = new List<Mailchimp_Sync_Error__c>();
+        Mailchimp_Batch_Operation__c[] updated = new List<Mailchimp_Batch_Operation__c>();
+        for (Mailchimp_Batch_Operation__c batch : batches) {
+            Result result = this.updateBatch(batch);
+            if (result.isError()) {
+                errors.add(result.requestError);
+                continue;
+            }
+            updated.add(batch);
+        }
+        insert errors;
+        update updated;
+    }
+
+    public void updateBatch(String batchId) {
         Mailchimp_Batch_Operation__c batch =
             [SELECT Id, Name, Status__c, Submitted_At__c, Completed_At__c,
                     Total_Operations__c, Finished_Operations__c, Errored_Operations__c,
                     Response_Body_URL__c
              FROM Mailchimp_Batch_Operation__c WHERE Name = :batchId LIMIT 1];
+        Result result = this.updateBatch(batch);
+        if (result.isError()) {
+            insert result.requestError;
+        }
+    }
+
+    public Result updateBatch(Mailchimp_Batch_Operation__c batch) {
         Result result = new Result();
 
         MailchimpAPI mailchimp = new MailchimpAPI();
-        HttpResponse resp = mailchimp.get('batches/' + batchId);
+        HttpResponse resp = mailchimp.get('batches/' + batch.Name);
         if (resp.getStatusCode() != 200) {
             JSONParser parser = JSON.createParser(resp.getBody());
             MailchimpErrorResponse error =
                 (MailchimpErrorResponse)parser.readValueAsStrict(MailchimpErrorResponse.class);
             result.requestError = new Mailchimp_Sync_Error__c(
-                Stage__c=STAGE_BATCH_TAG,
+                Stage__c=STAGE_UPDATE_BATCH_STATUS,
                 Status_Code__c=String.valueOf(error.status),
                 Title__c=error.title,
                 Detail__c=error.detail

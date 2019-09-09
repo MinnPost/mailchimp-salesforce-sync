@@ -10,11 +10,7 @@ public with sharing class MailchimpSyncController {
             [SELECT Id, Name, CreatedDate, Stage__c, Contact__c, Title__c, Detail__c
              FROM Mailchimp_Sync_Error__c
              ORDER BY CreatedDate DESC LIMIT 20];
-        this.unfinishedBatchOperations =
-            [SELECT Id, Name, Status__c, Submitted_At__c
-             FROM Mailchimp_Batch_Operation__c
-             WHERE Status__c <> 'finished'
-             ORDER BY Submitted_At__C DESC LIMIT 20];
+        this.unfinishedBatchOperations = mailchimp.unfinishedBatches(20);
     }
 
     public PageReference pushContacts() {
@@ -45,6 +41,16 @@ public with sharing class MailchimpSyncController {
 
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
         mailchimp.pullAll(100);
+
+        return redirect;
+    }
+
+    public PageReference updateBatches() {
+        PageReference redirect = ApexPages.currentPage();
+        redirect.setRedirect(true);
+
+        MailchimpSyncManager mailchimp = new MailchimpSyncManager();
+        mailchimp.updateBatches();
 
         return redirect;
     }
