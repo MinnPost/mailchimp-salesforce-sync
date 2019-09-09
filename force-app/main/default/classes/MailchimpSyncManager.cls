@@ -286,6 +286,27 @@ public with sharing class MailchimpSyncManager {
         return true;
     }
 
+    private List<MCSubscriber> parseMembersResponse(String respBody) {
+        List<MCSubscriber> contacts = new List<MCSubscriber>();
+        JSONParser parser = JSON.createParser(respBody);
+        if (parser.nextToken() != JSONToken.START_OBJECT) {
+            System.debug('Can\'t parse response beginning with ' + parser.getCurrentToken());
+            return contacts;
+        }
+        while (parser.nextValue() != null) {
+            if (parser.getCurrentName() == 'members') {
+                if (parser.getCurrentToken() != JSONToken.START_ARRAY) {
+                    throw new TypeException('"members" in response was expected to be an array, got ' + parser.getCurrentToken());
+                }
+                while (parser.nextToken() == JSONToken.START_OBJECT) {
+                    MCSubscriber member = (MCSubscriber)parser.readValueAs(MCSubscriber.class);
+                    contacts.add(member);
+                }
+            }
+        }
+        return contacts;
+    }
+
     public Result pushAll(List<Contact> contacts) {
         Result result = new Result();
 
@@ -419,5 +440,15 @@ public with sharing class MailchimpSyncManager {
         }
 
         return interestCategories;
+    }
+
+    public MCSubscriber[] pullAll(Integer count, Integer offset) {
+        MailchimpAPI mailchimp = new MailchimpAPI();
+        HttpResponse resp = mailchimp.get(
+            mailchimp.membersEndpoint() +
+            '?fields=total_items,members.id,members.email_address,members.status,members.member_rating,members.last_changed,members.merge_fields,members.interests' +
+            '&count=' + count + '&offset=' + offset
+        );
+        return this.parseMembersResponse(resp.getBody());
     }
 }
