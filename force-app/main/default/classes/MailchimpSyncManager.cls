@@ -364,13 +364,70 @@ public with sharing class MailchimpSyncManager {
         this.upsertInterests(interestCategories);
     }
 
-    public MCSubscriber[] pullAll(Integer count, Integer offset) {
+    private Boolean shouldRetry(Database.UpsertResult result) {
+        if (result.isSuccess() || !result.isCreated()) return false;
+
+        for (Database.Error err : result.getErrors()) {
+            if (err.getStatusCode() == StatusCode.REQUIRED_FIELD_MISSING &&
+                err.getFields().contains('Last Name')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void pullAll(Integer count) {
         MailchimpAPI mailchimp = new MailchimpAPI();
         HttpResponse resp = mailchimp.get(
             mailchimp.membersEndpoint() +
             '?fields=total_items,members.id,members.email_address,members.status,members.member_rating,members.last_changed,members.merge_fields,members.interests' +
-            '&count=' + count + '&offset=' + offset
+            '&count=' + count
         );
-        return this.parseMembersResponse(resp.getBody());
+        MCSubscriber[] members = this.parseMembersResponse(resp.getBody());
+        Contact[] contacts = new List<Contact>();
+        for (MCSubscriber member : members) {
+            Contact c = new Contact(
+                Email=member.email_address,
+                MailchimpEmailHash__c=member.ID,
+                MailchimpMemberRating__c=member.member_rating,
+                MailchimpLastChanged__c=member.last_changed
+            );
+            contacts.add(c);
+        }
+
+        // Try to upsert without first/last name, check for the appropriate error.
+        // New records will come back with a result with isCreated() == TRUE,
+        // and a REQUIRED_FIELD_MISSING error on LastName.
+        Database.UpsertResult[] results = Database.upsert(contacts, Contact.Fields.Email, false);
+        Contact[] contactsToInsert = new List<Contact>();
+        for (Integer i = 0; i < results.size(); ++i) {
+            Database.UpsertResult result = results[i];
+            Contact c = contacts[i];
+            MCSubscriber member = members[i];
+
+            if (result.isSuccess()) continue;
+            if (this.shouldRetry(result)) {
+                c.FirstName = member.merge_fields.get('FNAME');
+                c.LastName = member.merge_fields.get('LNAME');
+                contactsToInsert.add(c);
+                continue;
+            }
+
+            System.debug('Error(s) inserting or updating contact.');
+            for (Database.Error err : result.getErrors()) {
+                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+            }
+        }
+
+        Database.SaveResult[] insertResults = Database.insert(contactsToInsert, false);
+        for (Database.SaveResult result : insertResults) {
+            if (result.isSuccess()) continue;
+
+            System.debug('Error(s) inserting or updating contact.');
+            for (Database.Error err : result.getErrors()) {
+                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+            }
+        }
     }
 }

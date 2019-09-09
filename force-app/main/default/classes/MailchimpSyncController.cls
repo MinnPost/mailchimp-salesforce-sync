@@ -39,71 +39,12 @@ public with sharing class MailchimpSyncController {
         return redirect;
     }
 
-    private Boolean shouldRetry(Database.UpsertResult result) {
-        if (result.isSuccess() || !result.isCreated()) return false;
-
-        for (Database.Error err : result.getErrors()) {
-            System.debug(err);
-            if (err.getStatusCode() == StatusCode.REQUIRED_FIELD_MISSING &&
-                err.getFields().contains('Last Name')) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     public PageReference pullContacts() {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
 
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        MCSubscriber[] members = mailchimp.pullAll(100, 0);
-
-        Contact[] contacts = new List<Contact>();
-        for (MCSubscriber member : members) {
-            Contact c = new Contact(
-                Email=member.email_address,
-                MailchimpEmailHash__c=member.ID,
-                MailchimpMemberRating__c=member.member_rating,
-                MailchimpLastChanged__c=member.last_changed
-            );
-            contacts.add(c);
-        }
-
-        // Try to upsert without first/last name, check for the appropriate error.
-        // New records will come back with a result with isCreated() == TRUE,
-        // and a REQUIRED_FIELD_MISSING error on LastName.
-        Database.UpsertResult[] results = Database.upsert(contacts, Contact.Fields.Email, false);
-        Contact[] contactsToInsert = new List<Contact>();
-        for (Integer i = 0; i < results.size(); ++i) {
-            Database.UpsertResult result = results[i];
-            Contact c = contacts[i];
-            MCSubscriber member = members[i];
-
-            if (result.isSuccess()) continue;
-            if (this.shouldRetry(result)) {
-                c.FirstName = member.merge_fields.get('FNAME');
-                c.LastName = member.merge_fields.get('LNAME');
-                contactsToInsert.add(c);
-                continue;
-            }
-
-            System.debug('Error(s) inserting or updating contact.');
-            for (Database.Error err : result.getErrors()) {
-                System.debug(err.getStatusCode() + ': ' + err.getMessage());
-            }
-        }
-
-        Database.SaveResult[] insertResults = Database.insert(contactsToInsert, false);
-        for (Database.SaveResult result : insertResults) {
-            if (result.isSuccess()) continue;
-
-            System.debug('Error(s) inserting or updating contact.');
-            for (Database.Error err : result.getErrors()) {
-                System.debug(err.getStatusCode() + ': ' + err.getMessage());
-            }
-        }
+        mailchimp.pullAll(100);
 
         return redirect;
     }
