@@ -51,11 +51,7 @@ public with sharing class MailchimpSyncManager {
         }
     }
 
-    public Contact[] contactsToSync() {
-        return this.contactsToSync(null);
-    }
-
-    public Contact[] contactsToSync(Integer lim) {
+    public String contactsQuery(Integer lim) {
         // TODO: annual donation history
         String query = 'SELECT ID, Email, FirstName, LastName, Drupal_ID__c, Drupal_Username__c,' +
             ' Account.ID, Account.SF_Record_Type__c,' +
@@ -71,7 +67,19 @@ public with sharing class MailchimpSyncManager {
         if (lim != null) {
             query += ' LIMIT ' + lim;
         }
-        return Database.query(query);
+        return query;
+    }
+
+    public Database.QueryLocator contactsQueryLocator() {
+        return this.contactsQueryLocator(null);
+    }
+
+    public Database.QueryLocator contactsQueryLocator(Integer lim) {
+        return Database.getQueryLocator(this.contactsQuery(lim));
+    }
+
+    public Contact[] contactsToSync(Integer lim) {
+        return Database.query(this.contactsQuery(lim));
     }
 
     public Mailchimp_Batch_Operation__c[] unfinishedBatches() {
