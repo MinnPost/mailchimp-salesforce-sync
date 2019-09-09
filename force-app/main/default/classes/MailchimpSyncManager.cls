@@ -2,6 +2,17 @@ public with sharing class MailchimpSyncManager {
     static final String STAGE_BATCH_SUB_UNSUB = '1 - Add/update contacts in Mailchimp';
     static final String STAGE_BATCH_TAG = '2 - Add/update tags in Mailchimp';
 
+    class ContactFieldsResponse {
+        public Integer total_created;
+        public Integer total_updated;
+        public Integer error_count;
+        public BatchEmailError[] errors;
+
+        public ContactFieldsResponse() {
+            this.errors = new List<BatchEmailError>();
+        }
+    }
+
     class BatchEmailError {
         public String email_address;
         public String error;
@@ -42,55 +53,35 @@ public with sharing class MailchimpSyncManager {
 
     private Boolean parseContactFieldsResponse(Contact[] contacts, String respBody, Result result) {
         JSONParser parser = JSON.createParser(respBody);
-        if (parser.nextToken() != JSONToken.START_OBJECT) {
-            System.debug(LoggingLevel.ERROR,
-                'Error parsing Mailchimp response: expected ' + JSONToken.START_OBJECT +
-                ', got ' + parser.getCurrentToken());
+        try {
+            ContactFieldsResponse response = (ContactFieldsResponse)parser.readValueAs(ContactFieldsResponse.class);
+            result.totalCreated = response.total_created;
+            result.totalUpdated = response.total_updated;
+            result.errorCount = response.error_count;
+            if (response.errors == null) {
+                return true;
+            }
+            for (BatchEmailError error : response.errors) {
+                String email = error.email_address;
+                Id cId = [SELECT Id FROM Contact WHERE Email = :email LIMIT 1].Id;
+                result.contactErrors.put(
+                    email,
+                    new Mailchimp_Sync_Error__c(
+                        Stage__c=STAGE_BATCH_SUB_UNSUB,
+                        Contact__c=cId,
+                        Detail__c=error.error
+                    )
+                );
+            }
+        } catch (JSONException e) {
+            System.debug(LoggingLevel.ERROR, e);
             result.requestError = new Mailchimp_Sync_Error__c(
                 Stage__c=STAGE_BATCH_SUB_UNSUB,
-                Title__c='Error parsing Mailchimp response',
-                Detail__c='expected ' + JSONToken.START_OBJECT + ', got ' + parser.getCurrentToken()
+                Title__c=e.getTypeName() + ' while parsing Mailchimp response',
+                Detail__c=e.getMessage()
             );
             insert result.requestError;
             return false;
-        }
-
-        while (parser.nextValue() != null) {
-            switch on parser.getCurrentName() {
-                when 'total_created' {
-                    result.totalCreated = parser.getIntegerValue();
-                }
-                when 'total_updated' {
-                    result.totalUpdated = parser.getIntegerValue();
-                }
-                when 'error_count' {
-                    result.errorCount = parser.getIntegerValue();
-                }
-                when 'errors' {
-                    System.assert(parser.getCurrentToken() == JSONToken.START_ARRAY);
-                    while (parser.nextToken() != JSONToken.END_ARRAY) {
-                        BatchEmailError error =
-                            (BatchEmailError)parser.readValueAsStrict(BatchEmailError.class);
-                        parser.skipChildren();
-                        String email = error.email_address;
-                        Id cId = [SELECT Id FROM Contact WHERE Email = :email LIMIT 1].Id;
-                        result.contactErrors.put(
-                            email,
-                            new Mailchimp_Sync_Error__c(
-                                Stage__c=STAGE_BATCH_SUB_UNSUB,
-                                Contact__c=cId,
-                                Detail__c=error.error
-                            )
-                        );
-                    }
-                }
-                when else {
-                    if (parser.getCurrentToken() == JSONToken.START_OBJECT ||
-                        parser.getCurrentToken() == JSONToken.START_ARRAY) {
-                        parser.skipChildren();
-                    }
-                }
-            }
         }
 
         return true;
