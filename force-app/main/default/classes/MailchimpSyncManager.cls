@@ -49,6 +49,29 @@ public with sharing class MailchimpSyncManager {
         }
     }
 
+    public Contact[] contactsToSync() {
+        return this.contactsToSync(null);
+    }
+
+    public Contact[] contactsToSync(Integer lim) {
+        // TODO: annual donation history
+        String query = 'SELECT ID, Email, FirstName, LastName, Drupal_ID__c, Drupal_Username__c,' +
+            ' Account.ID, Account.SF_Record_Type__c,' +
+            ' Account.Membership_Level_Number__c, Account.Membership_Level__c,' +
+            ' Account.Membership_level_qualification_amount__c, Account.Membership_Expiration_Date__c,' +
+            ' Account.Recurring_donations_Annualized_value_new__c,' +
+            ' Active_sustainer_account__c, Is_partner_offer_eligible__c,' +
+            ' Current_member__c, Lapsed_member__c, Never_member__c,' +
+            ' MinnPost_com_user_account__c' +
+            ' FROM Contact' +
+            ' WHERE Email != null AND MailchimpNeedsSync__c = TRUE' +
+            ' ORDER BY Email ASC';
+        if (lim != null) {
+            query += ' LIMIT ' + lim;
+        }
+        return Database.query(query);
+    }
+
     private Mailchimp_Sync_Error__c reportError(String stage, String respBody) {
         JSONParser parser = JSON.createParser(respBody);
         MailchimpErrorResponse error =
@@ -147,7 +170,30 @@ public with sharing class MailchimpSyncManager {
         }
     }
 
-    public Result pushAll(List<Contact> contacts) {
+    private void markContactsSynced(Contact[] contacts, Map<String, Mailchimp_Sync_Error__c> contactErrors) {
+        DateTime lastSyncedAt = DateTime.now();
+
+        // Mark contacts as synced
+        // TODO: I've observed this fail because of a Flow Trigger blowing over
+        // the Apex CPU time limit. Need to figure out what to do about that.
+        for (Contact c : contacts) {
+            if (contactErrors.containsKey(c.Email)) {
+                insert contactErrors.get(c.Email);
+                continue;
+            }
+            c.MailchimpLastSyncedAt__c = lastSyncedAt;
+        }
+        Database.SaveResult[] results = Database.update(contacts);
+        for (Database.SaveResult saveResult : results) {
+            if (saveResult.isSuccess()) continue;
+            System.debug('Error(s) updating timestamp on synced records.');
+            for (Database.Error err : saveResult.getErrors()) {
+                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+            }
+        }
+    }
+
+    public Result pushAll(Contact[] contacts) {
         Result result = new Result();
 
         // Mailchimp API returns 200 even if some of the sub/unsub changes
@@ -173,6 +219,7 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
 
+        this.markContactsSynced(contacts, result.contactErrors);
         return result;
     }
 
