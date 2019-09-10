@@ -206,10 +206,7 @@ public with sharing class MailchimpSyncManager {
         // TODO: I've observed this fail because of a Flow Trigger blowing over
         // the Apex CPU time limit. Need to figure out what to do about that.
         for (Contact c : contacts) {
-            if (contactErrors.containsKey(c.Email)) {
-                insert contactErrors.get(c.Email);
-                continue;
-            }
+            if (contactErrors.containsKey(c.Email)) continue;
             c.MailchimpLastSyncedAt__c = lastSyncedAt;
         }
         Database.SaveResult[] results = Database.update(contacts);
@@ -249,6 +246,7 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
 
+        insert result.contactErrors.values();
         this.markContactsSynced(contacts, result.contactErrors);
         return result;
     }
