@@ -111,11 +111,10 @@ public with sharing class MailchimpSyncManager {
             Title__c=error.title,
             Detail__c=error.detail
         );
-        insert syncError;
         return syncError;
     }
 
-    private Boolean parseContactFieldsResponse(Contact[] contacts, String respBody, Result result) {
+    private void parseContactFieldsResponse(Contact[] contacts, String respBody, Result result) {
         JSONParser parser = JSON.createParser(respBody);
         try {
             ContactFieldsResponse response = (ContactFieldsResponse)parser.readValueAs(ContactFieldsResponse.class);
@@ -123,7 +122,7 @@ public with sharing class MailchimpSyncManager {
             result.totalUpdated = response.total_updated;
             result.errorCount = response.error_count;
             if (response.errors == null) {
-                return true;
+                return;
             }
             for (BatchEmailError error : response.errors) {
                 String email = error.email_address;
@@ -144,23 +143,19 @@ public with sharing class MailchimpSyncManager {
                 Title__c=e.getTypeName() + ' while parsing Mailchimp response',
                 Detail__c=e.getMessage()
             );
-            insert result.requestError;
-            return false;
         }
-
-        return true;
     }
 
-    private Boolean parseBatchResponse(String respBody, Result result) {
+    private void parseBatchResponse(String respBody, Result result) {
         Mailchimp_Batch_Operation__c batch = new Mailchimp_Batch_Operation__c();
-        if (!this.parseBatchResponse(respBody, result, batch)) {
-            return false;
+        this.parseBatchResponse(respBody, result, batch);
+        if (result.isError()) {
+            return;
         }
         insert batch;
-        return true;
     }
 
-    private Boolean parseBatchResponse(String respBody, Result result, Mailchimp_Batch_Operation__c batch) {
+    private void parseBatchResponse(String respBody, Result result, Mailchimp_Batch_Operation__c batch) {
         JSONParser parser = JSON.createParser(respBody);
         try {
             BatchResponse response = (BatchResponse)parser.readValueAs(BatchResponse.class);
@@ -182,10 +177,7 @@ public with sharing class MailchimpSyncManager {
                 Title__c=e.getTypeName() + ' while parsing Mailchimp response',
                 Detail__c=e.getMessage()
             );
-            return false;
         }
-
-        return true;
     }
 
     private List<MailchimpAPI.Subscriber> parseMembersResponse(String respBody) {
@@ -227,21 +219,26 @@ public with sharing class MailchimpSyncManager {
         // I have observed it return a 400 Bad Request with an error response
         // if there are duplicate e-mails in the list.
         MailchimpAPI mailchimp = new MailchimpAPI();
-        HttpResponse resp = mailchimp.pushContactFields(contacts);
-        if (resp.getStatusCode() != 200) {
-            result.requestError = this.reportError(STAGE_BATCH_SUB_UNSUB, resp.getBody());
+        HttpResponse pushFieldsResp = mailchimp.pushContactFields(contacts);
+        if (pushFieldsResp.getStatusCode() != 200) {
+            result.requestError = this.reportError(STAGE_BATCH_SUB_UNSUB, pushFieldsResp.getBody());
+            insert result.requestError;
             return result;
         }
-        if (!this.parseContactFieldsResponse(contacts, resp.getBody(), result)) {
+        this.parseContactFieldsResponse(contacts, pushFieldsResp.getBody(), result);
+        if (result.isError()) {
+            insert result.requestError;
             return result;
         }
 
         HttpResponse tagsResp = mailchimp.pushContactTags(contacts, result.contactErrors.keySet());
         if (tagsResp.getStatusCode() != 200) {
             result.requestError = this.reportError(STAGE_BATCH_TAG, tagsResp.getBody());
+            insert result.requestError;
             return result;
         }
-        if (!this.parseBatchResponse(tagsResp.getBody(), result)) {
+        this.parseBatchResponse(tagsResp.getBody(), result);
+        if (result.isError()) {
             insert result.requestError;
             return result;
         }
@@ -298,10 +295,7 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
 
-        if (!this.parseBatchResponse(resp.getBody(), result, batch)) {
-            return result;
-        }
-
+        this.parseBatchResponse(resp.getBody(), result, batch);
         return result;
     }
 
