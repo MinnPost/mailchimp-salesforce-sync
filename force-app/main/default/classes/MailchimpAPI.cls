@@ -14,6 +14,17 @@ public class MailchimpAPI {
         TAG_PARTNER_OFFER_ELIGIBLE => 'Is_partner_offer_eligible__c'
     };
 
+    static final String[] MEMBERS_FIELDS = new List<String>{
+        'total_items',
+        'members.id',
+        'members.email_address',
+        'members.status',
+        'members.member_rating',
+        'members.last_changed',
+        'members.merge_fields',
+        'members.interests'
+    };
+
     private Http connection;
 
     public class Subscriber {
@@ -209,5 +220,11 @@ public class MailchimpAPI {
         // This call will return pretty much immediately, since the batch
         // operations are queued up to happen asynchronously.
         return this.post('batches', body.getAsString());
+    }
+
+    public HttpResponse fetchMembers(Integer count, Integer offset) {
+        String fields = String.join(MEMBERS_FIELDS, ',');
+        String queryString = '?fields=' + fields + '&count=' + count + '&offset=' + offset;
+        return this.get(this.membersEndpoint() + queryString);
     }
 }

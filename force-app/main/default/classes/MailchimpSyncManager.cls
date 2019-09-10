@@ -514,11 +514,7 @@ public with sharing class MailchimpSyncManager {
 
     public void pullAll(Integer count) {
         MailchimpAPI mailchimp = new MailchimpAPI();
-        HttpResponse resp = mailchimp.get(
-            mailchimp.membersEndpoint() +
-            '?fields=total_items,members.id,members.email_address,members.status,members.member_rating,members.last_changed,members.merge_fields,members.interests' +
-            '&count=' + count
-        );
+        HttpResponse resp = mailchimp.fetchMembers(count, 0);
         MembersResult result = this.parseMembersResponse(resp.getBody());
         if (result.isError()) {
             insert result.requestError;
@@ -530,8 +526,6 @@ public with sharing class MailchimpSyncManager {
         this.collectContactsAndSubscriptions(result.members, contacts, subscriptions);
 
         this.upsertContacts(result.members, contacts);
-
-        // Now update the subscriptions according to the lists we built earlier
         upsert subscriptions;
     }
 }
