@@ -2,6 +2,7 @@ public with sharing class MailchimpSyncController {
     public List<Contact> contactList { get; private set; }
     public List<Mailchimp_Sync_Error__c> recentSyncErrors { get; private set; }
     public List<Mailchimp_Batch_Operation__c> unfinishedBatchOperations { get; private set; }
+    public List<AsyncApexJob> processingJobs { get; private set; }
 
     public void fetchData() {
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
@@ -11,16 +12,20 @@ public with sharing class MailchimpSyncController {
              FROM Mailchimp_Sync_Error__c
              ORDER BY CreatedDate DESC LIMIT 20];
         this.unfinishedBatchOperations = mailchimp.unfinishedBatches(20);
+        this.processingJobs =
+            [SELECT Id, ApexClass.Name, CreatedDate, Status, ExtendedStatus, NumberOfErrors
+             FROM AsyncApexJob
+             WHERE ApexClassID IN (
+                SELECT Id FROM ApexClass WHERE Name IN ('MailchimpPullJob', 'MailchimpSyncJob')
+             )
+             ORDER BY CreatedDate DESC LIMIT 20];
     }
 
     public PageReference pushContacts() {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
 
-        MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        Contact[] contacts = Mailchimp.contactsToSync(400);
-        MailchimpSyncManager.Result result = mailchimp.pushAll(contacts);
-        System.debug(result);
+        Database.executeBatch(new MailchimpSyncJob(), 400);
 
         return redirect;
     }
@@ -39,8 +44,7 @@ public with sharing class MailchimpSyncController {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
 
-        MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        mailchimp.pullAll(400);
+        System.enqueueJob(new MailchimpPullJob(400, 0));
 
         return redirect;
     }

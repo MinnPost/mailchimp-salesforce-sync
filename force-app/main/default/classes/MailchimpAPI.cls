@@ -222,9 +222,17 @@ public class MailchimpAPI {
         return this.post('batches', body.getAsString());
     }
 
-    public HttpResponse fetchMembers(Integer count, Integer offset) {
+    public HttpResponse fetchMembers(Integer count, Integer offset, Datetime changedSince) {
         String fields = String.join(MEMBERS_FIELDS, ',');
-        String queryString = '?fields=' + fields + '&count=' + count + '&offset=' + offset;
+        String queryString =
+            '?fields=' + fields +
+            '&sort_field=last_changed' +
+            '&sort_dir=ASC' +
+            '&count=' + count +
+            '&offset=' + offset;
+        if (changedSince != null) {
+            queryString += '&since_last_changed=' + changedSince.format('yyyy-MM-dd\'T\'HH:mm:ss.SSSZ');
+        }
         return this.get(this.membersEndpoint() + queryString);
     }
 }

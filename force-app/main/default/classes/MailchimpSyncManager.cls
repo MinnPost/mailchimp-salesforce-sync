@@ -33,12 +33,14 @@ public with sharing class MailchimpSyncManager {
     }
 
     class MembersResponse {
+        public Integer total_items;
         public MailchimpAPI.Subscriber[] members;
     }
 
     class MembersResult {
         public MailchimpAPI.Subscriber[] members;
         public Mailchimp_Sync_Error__c requestError;
+        public Integer totalItems = 0;
 
         public MembersResult() {
             this.members = new List<MailchimpAPI.Subscriber>();
@@ -55,6 +57,7 @@ public with sharing class MailchimpSyncManager {
         public Integer errorCount = 0;
         public Mailchimp_Sync_Error__c requestError;
         public Map<String, Mailchimp_Sync_Error__c> contactErrors { get; private set; }
+        public Long totalItems = 0;
 
         public Result() {
             this.contactErrors = new Map<String, Mailchimp_Sync_Error__c>();
@@ -200,6 +203,7 @@ public with sharing class MailchimpSyncManager {
         try {
             MembersResponse response = (MembersResponse)parser.readValueAs(MembersResponse.class);
             result.members = response.members;
+            result.totalItems = response.total_items;
         } catch (JSONException e) {
             System.debug(LoggingLevel.ERROR, e);
             result.requestError = new Mailchimp_Sync_Error__c(
@@ -443,39 +447,62 @@ public with sharing class MailchimpSyncManager {
         return false;
     }
 
-    private void upsertContacts(MailchimpAPI.Subscriber[] members, Contact[] contacts) {
+    private void upsertContacts(MailchimpAPI.Subscriber[] members, Contact[] contacts, Result result) {
         // Try to upsert without first/last name, check for the appropriate error.
         // New records will come back with a result with isCreated() == TRUE,
         // and a REQUIRED_FIELD_MISSING error on LastName.
         Database.UpsertResult[] results = Database.upsert(contacts, Contact.Fields.Email, false);
         Contact[] contactsToInsert = new List<Contact>();
         for (Integer i = 0; i < results.size(); ++i) {
-            Database.UpsertResult result = results[i];
+            Database.UpsertResult upsertResult = results[i];
             Contact c = contacts[i];
             MailchimpAPI.Subscriber member = members[i];
 
-            if (result.isSuccess()) continue;
-            if (this.shouldRetry(result)) {
+            if (upsertResult.isSuccess()) continue;
+            if (this.shouldRetry(upsertResult)) {
                 c.FirstName = member.merge_fields.get('FNAME');
                 c.LastName = member.merge_fields.get('LNAME');
                 contactsToInsert.add(c);
                 continue;
             }
 
-            System.debug('Error(s) inserting or updating contact.');
-            for (Database.Error err : result.getErrors()) {
+            System.debug('Error(s) updating contact.');
+            String email = c.Email;
+            ID cId = [SELECT Id FROM Contact WHERE Email = :email LIMIT 1].Id;
+            for (Database.Error err : upsertResult.getErrors()) {
                 System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                result.contactErrors.put(
+                    cId,
+                    new Mailchimp_Sync_Error__c(
+                        Stage__c=STAGE_FETCH_MEMBERS,
+                        Contact__c=cId,
+                        Title__c='Error while updating contact',
+                        Detail__c=err.getMessage()
+                    )
+                );
             }
         }
 
         Database.SaveResult[] insertResults = Database.insert(contactsToInsert, false);
         for (Integer i = 0; i < insertResults.size(); ++i) {
-            Database.SaveResult result = insertResults[i];
-            if (result.isSuccess()) continue;
+            Database.SaveResult insertResult = insertResults[i];
+            Contact c = contactsToInsert[i];
+            if (insertResult.isSuccess()) continue;
 
-            System.debug('Error(s) inserting or updating contact.');
-            for (Database.Error err : result.getErrors()) {
+            System.debug('Error(s) creating contact.');
+            String email = c.Email;
+            ID cId = [SELECT Id FROM Contact WHERE Email = :email LIMIT 1].Id;
+            for (Database.Error err : insertResult.getErrors()) {
                 System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                result.contactErrors.put(
+                    cId,
+                    new Mailchimp_Sync_Error__c(
+                        Stage__c=STAGE_FETCH_MEMBERS,
+                        Contact__c=cId,
+                        Title__c='Error while creating contact',
+                        Detail__c=err.getMessage()
+                    )
+                );
             }
         }
     }
@@ -513,19 +540,32 @@ public with sharing class MailchimpSyncManager {
     }
 
     public void pullAll(Integer count) {
+        this.pullAll(count, 0);
+    }
+
+    public Result pullAll(Integer count, Integer offset) {
+        Result result = new Result();
+
         MailchimpAPI mailchimp = new MailchimpAPI();
-        HttpResponse resp = mailchimp.fetchMembers(count, 0);
-        MembersResult result = this.parseMembersResponse(resp.getBody());
-        if (result.isError()) {
-            insert result.requestError;
-            return;
+        AggregateResult[] maxResults = [SELECT MAX(MailchimpLastSyncedAt__c) mostRecentSyncedAt FROM Contact];
+        Datetime mostRecentSyncedAt = (Datetime)maxResults[0].get('mostRecentSyncedAt');
+        HttpResponse resp = mailchimp.fetchMembers(count, offset, mostRecentSyncedAt);
+        MembersResult memResult = this.parseMembersResponse(resp.getBody());
+        if (memResult.isError()) {
+            insert memResult.requestError;
+            result.requestError = memResult.requestError;
+            return result;
         }
+        result.totalItems = memResult.totalItems;
 
         Contact[] contacts = new List<Contact>();
         MailchimpSubscription__c[] subscriptions = new List<MailchimpSubscription__c>();
-        this.collectContactsAndSubscriptions(result.members, contacts, subscriptions);
+        this.collectContactsAndSubscriptions(memResult.members, contacts, subscriptions);
 
-        this.upsertContacts(result.members, contacts);
+        this.upsertContacts(memResult.members, contacts, result);
         upsert subscriptions;
+
+        insert result.contactErrors.values();
+        return result;
     }
 }

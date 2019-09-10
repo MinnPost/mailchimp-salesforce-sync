@@ -31,11 +31,21 @@
                 <apex:column value="{!batch.Status__c}" />
             </apex:pageBlockTable>
         </apex:pageBlock>
+        <apex:pageBlock title="Recent scheduled jobs">
+            <apex:pageBlockTable var="job" value="{!processingJobs}">
+                <apex:column value="{!job.Id}" />
+                <apex:column value="{!job.ApexClass.Name}" />
+                <apex:column value="{!job.CreatedDate}" />
+                <apex:column value="{!job.Status}" />
+                <apex:column value="{!job.ExtendedStatus}" />
+                <apex:column value="{!job.NumberOfErrors}" />
+            </apex:pageBlockTable>
+        </apex:pageBlock>
         <apex:pageBlock title="Contacts to be synced">
             <apex:pageBlockButtons>
                 <apex:commandButton action="{!pullInterests}" value="Pull Mailchimp groups" />
-                <apex:commandButton action="{!pullContacts}" value="Pull 400 contacts from Mailchimp" />
-                <apex:commandButton action="{!pushContacts}" value="Push next 400 contacts to Mailchimp" />
+                <apex:commandButton action="{!pullContacts}" value="Pull Mailchimp contacts" />
+                <apex:commandButton action="{!pushContacts}" value="Push contacts to Mailchimp" />
             </apex:pageBlockButtons>
             <apex:pageBlockTable var="contact" value="{!contactList}">
                 <apex:column>
