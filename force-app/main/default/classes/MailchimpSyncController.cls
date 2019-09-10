@@ -40,7 +40,7 @@ public with sharing class MailchimpSyncController {
         redirect.setRedirect(true);
 
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        mailchimp.pullAll(100);
+        mailchimp.pullAll(400);
 
         return redirect;
     }
