@@ -431,6 +431,43 @@ public with sharing class MailchimpSyncManager {
         return false;
     }
 
+    private void upsertContacts(MailchimpAPI.Subscriber[] members, Contact[] contacts) {
+        // Try to upsert without first/last name, check for the appropriate error.
+        // New records will come back with a result with isCreated() == TRUE,
+        // and a REQUIRED_FIELD_MISSING error on LastName.
+        Database.UpsertResult[] results = Database.upsert(contacts, Contact.Fields.Email, false);
+        Contact[] contactsToInsert = new List<Contact>();
+        for (Integer i = 0; i < results.size(); ++i) {
+            Database.UpsertResult result = results[i];
+            Contact c = contacts[i];
+            MailchimpAPI.Subscriber member = members[i];
+
+            if (result.isSuccess()) continue;
+            if (this.shouldRetry(result)) {
+                c.FirstName = member.merge_fields.get('FNAME');
+                c.LastName = member.merge_fields.get('LNAME');
+                contactsToInsert.add(c);
+                continue;
+            }
+
+            System.debug('Error(s) inserting or updating contact.');
+            for (Database.Error err : result.getErrors()) {
+                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+            }
+        }
+
+        Database.SaveResult[] insertResults = Database.insert(contactsToInsert, false);
+        for (Integer i = 0; i < insertResults.size(); ++i) {
+            Database.SaveResult result = insertResults[i];
+            if (result.isSuccess()) continue;
+
+            System.debug('Error(s) inserting or updating contact.');
+            for (Database.Error err : result.getErrors()) {
+                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+            }
+        }
+    }
+
     public void pullAll(Integer count) {
         MailchimpAPI mailchimp = new MailchimpAPI();
         HttpResponse resp = mailchimp.get(
@@ -467,40 +504,7 @@ public with sharing class MailchimpSyncManager {
             }
         }
 
-        // Try to upsert without first/last name, check for the appropriate error.
-        // New records will come back with a result with isCreated() == TRUE,
-        // and a REQUIRED_FIELD_MISSING error on LastName.
-        Database.UpsertResult[] results = Database.upsert(contacts, Contact.Fields.Email, false);
-        Contact[] contactsToInsert = new List<Contact>();
-        for (Integer i = 0; i < results.size(); ++i) {
-            Database.UpsertResult result = results[i];
-            Contact c = contacts[i];
-            MailchimpAPI.Subscriber member = members[i];
-
-            if (result.isSuccess()) continue;
-            if (this.shouldRetry(result)) {
-                c.FirstName = member.merge_fields.get('FNAME');
-                c.LastName = member.merge_fields.get('LNAME');
-                contactsToInsert.add(c);
-                continue;
-            }
-
-            System.debug('Error(s) inserting or updating contact.');
-            for (Database.Error err : result.getErrors()) {
-                System.debug(err.getStatusCode() + ': ' + err.getMessage());
-            }
-        }
-
-        Database.SaveResult[] insertResults = Database.insert(contactsToInsert, false);
-        for (Integer i = 0; i < insertResults.size(); ++i) {
-            Database.SaveResult result = insertResults[i];
-            if (result.isSuccess()) continue;
-
-            System.debug('Error(s) inserting or updating contact.');
-            for (Database.Error err : result.getErrors()) {
-                System.debug(err.getStatusCode() + ': ' + err.getMessage());
-            }
-        }
+        this.upsertContacts(members, contacts);
 
         // Now update the subscriptions according to the lists we built earlier
         if (!subscriptions.isEmpty()) {
