@@ -1,4 +1,5 @@
 public with sharing class MailchimpSyncManager {
+    static final String STAGE_FETCH_MEMBERS = '0 - Fetch contacts from Mailchimp';
     static final String STAGE_BATCH_SUB_UNSUB = '1 - Add/update contacts in Mailchimp';
     static final String STAGE_BATCH_TAG = '2 - Add/update tags in Mailchimp';
     static final String STAGE_MARK_CONTACTS_SYNCED = '3 - Mark Salesforce contacts as synced';
@@ -33,6 +34,19 @@ public with sharing class MailchimpSyncManager {
 
     class MembersResponse {
         public MailchimpAPI.Subscriber[] members;
+    }
+
+    class MembersResult {
+        public MailchimpAPI.Subscriber[] members;
+        public Mailchimp_Sync_Error__c requestError;
+
+        public MembersResult() {
+            this.members = new List<MailchimpAPI.Subscriber>();
+        }
+
+        public Boolean isError() {
+            return (requestError != null);
+        }
     }
 
     public class Result {
@@ -174,21 +188,27 @@ public with sharing class MailchimpSyncManager {
             System.debug(LoggingLevel.ERROR, e);
             result.requestError = new Mailchimp_Sync_Error__c(
                 Stage__c=STAGE_BATCH_TAG,
-                Title__c=e.getTypeName() + ' while parsing Mailchimp response',
+                Title__c=e.getTypeName() + ' while parsing Mailchimp batch response',
                 Detail__c=e.getMessage()
             );
         }
     }
 
-    private List<MailchimpAPI.Subscriber> parseMembersResponse(String respBody) {
+    private MembersResult parseMembersResponse(String respBody) {
+        MembersResult result = new MembersResult();
         JSONParser parser = JSON.createParser(respBody);
         try {
             MembersResponse response = (MembersResponse)parser.readValueAs(MembersResponse.class);
-            return response.members;
+            result.members = response.members;
         } catch (JSONException e) {
             System.debug(LoggingLevel.ERROR, e);
-            return new List<MailchimpAPI.Subscriber>();
+            result.requestError = new Mailchimp_Sync_Error__c(
+                Stage__c=STAGE_FETCH_MEMBERS,
+                Title__c=e.getTypeName() + ' while parsing Mailchimp members response',
+                Detail__c=e.getMessage()
+            );
         }
+        return result;
     }
 
     private void markContactsSynced(Contact[] contacts, Map<String, Mailchimp_Sync_Error__c> contactErrors) {
@@ -460,16 +480,11 @@ public with sharing class MailchimpSyncManager {
         }
     }
 
-    public void pullAll(Integer count) {
-        MailchimpAPI mailchimp = new MailchimpAPI();
-        HttpResponse resp = mailchimp.get(
-            mailchimp.membersEndpoint() +
-            '?fields=total_items,members.id,members.email_address,members.status,members.member_rating,members.last_changed,members.merge_fields,members.interests' +
-            '&count=' + count
-        );
-        MailchimpAPI.Subscriber[] members = this.parseMembersResponse(resp.getBody());
-        Contact[] contacts = new List<Contact>();
-        MailchimpSubscription__c[] subscriptions = new List<MailchimpSubscription__c>();
+    public void collectContactsAndSubscriptions(
+        MailchimpAPI.Subscriber[] members,
+        Contact[] contacts,
+        MailchimpSubscription__c[] subscriptions
+    ) {
         for (MailchimpAPI.Subscriber member : members) {
             Contact c = new Contact(
                 Email=member.email_address,
@@ -495,12 +510,28 @@ public with sharing class MailchimpSyncManager {
                 subscriptions.add(sub);
             }
         }
+    }
 
-        this.upsertContacts(members, contacts);
+    public void pullAll(Integer count) {
+        MailchimpAPI mailchimp = new MailchimpAPI();
+        HttpResponse resp = mailchimp.get(
+            mailchimp.membersEndpoint() +
+            '?fields=total_items,members.id,members.email_address,members.status,members.member_rating,members.last_changed,members.merge_fields,members.interests' +
+            '&count=' + count
+        );
+        MembersResult result = this.parseMembersResponse(resp.getBody());
+        if (result.isError()) {
+            insert result.requestError;
+            return;
+        }
+
+        Contact[] contacts = new List<Contact>();
+        MailchimpSubscription__c[] subscriptions = new List<MailchimpSubscription__c>();
+        this.collectContactsAndSubscriptions(result.members, contacts, subscriptions);
+
+        this.upsertContacts(result.members, contacts);
 
         // Now update the subscriptions according to the lists we built earlier
-        if (!subscriptions.isEmpty()) {
-            upsert subscriptions;
-        }
+        upsert subscriptions;
     }
 }
