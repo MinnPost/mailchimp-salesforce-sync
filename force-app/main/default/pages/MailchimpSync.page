@@ -33,9 +33,9 @@
         </apex:pageBlock>
         <apex:pageBlock title="Contacts to be synced">
             <apex:pageBlockButtons>
-                <apex:commandButton action="{!pushContacts}" value="Push next 400 contacts to Mailchimp" />
                 <apex:commandButton action="{!pullInterests}" value="Pull Mailchimp groups" />
                 <apex:commandButton action="{!pullContacts}" value="Pull 400 contacts from Mailchimp" />
+                <apex:commandButton action="{!pushContacts}" value="Push next 400 contacts to Mailchimp" />
             </apex:pageBlockButtons>
             <apex:pageBlockTable var="contact" value="{!contactList}">
                 <apex:column>
