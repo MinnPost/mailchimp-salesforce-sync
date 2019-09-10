@@ -440,6 +440,7 @@ public with sharing class MailchimpSyncManager {
         );
         MailchimpAPI.Subscriber[] members = this.parseMembersResponse(resp.getBody());
         Contact[] contacts = new List<Contact>();
+        MailchimpSubscription__c[] subscriptions = new List<MailchimpSubscription__c>();
         for (MailchimpAPI.Subscriber member : members) {
             Contact c = new Contact(
                 Email=member.email_address,
@@ -448,6 +449,22 @@ public with sharing class MailchimpSyncManager {
                 MailchimpLastChanged__c=member.last_changed
             );
             contacts.add(c);
+
+            // Create reference versions of the contact we can use to update subscriptions
+            Contact contactRef = new Contact(
+                MailchimpEmailHash__c=member.ID
+            );
+
+            for (String interestID : member.interests.keySet()) {
+                Interest__c interestRef = new Interest__c(InterestID__c=interestID);
+                MailchimpSubscription__c sub = new MailchimpSubscription__c(
+                    Name=member.email_address + ' ' + interestID,
+                    Contact__r=contactRef,
+                    Interest__r=interestRef,
+                    Subscribed__c=member.interests.get(interestID)
+                );
+                subscriptions.add(sub);
+            }
         }
 
         // Try to upsert without first/last name, check for the appropriate error.
@@ -475,13 +492,19 @@ public with sharing class MailchimpSyncManager {
         }
 
         Database.SaveResult[] insertResults = Database.insert(contactsToInsert, false);
-        for (Database.SaveResult result : insertResults) {
+        for (Integer i = 0; i < insertResults.size(); ++i) {
+            Database.SaveResult result = insertResults[i];
             if (result.isSuccess()) continue;
 
             System.debug('Error(s) inserting or updating contact.');
             for (Database.Error err : result.getErrors()) {
                 System.debug(err.getStatusCode() + ': ' + err.getMessage());
             }
+        }
+
+        // Now update the subscriptions according to the lists we built earlier
+        if (!subscriptions.isEmpty()) {
+            upsert subscriptions;
         }
     }
 }

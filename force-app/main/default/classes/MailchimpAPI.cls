@@ -23,6 +23,7 @@ public class MailchimpAPI {
         public Integer member_rating;
         public Datetime last_changed;
         public Map<String, String> merge_fields;
+        public Map<String, Boolean> interests;
 
         public String getEmailAddress() {
             return this.email_address;
