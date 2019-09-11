@@ -1,9 +1,9 @@
 public with sharing class MailchimpSyncManager {
-    static final String STAGE_FETCH_MEMBERS = '0 - Fetch contacts from Mailchimp';
-    static final String STAGE_BATCH_SUB_UNSUB = '1 - Add/update contacts in Mailchimp';
-    static final String STAGE_BATCH_TAG = '2 - Add/update tags in Mailchimp';
-    static final String STAGE_MARK_CONTACTS_SYNCED = '3 - Mark Salesforce contacts as synced';
-    static final String STAGE_UPDATE_BATCH_STATUS = '4 - Check Mailchimp batch job status';
+    static final String STAGE_FETCH_MEMBERS = '1 - Fetch contacts from Mailchimp';
+    static final String STAGE_BATCH_SUB_UNSUB = '2 - Add/update contacts in Mailchimp';
+    static final String STAGE_BATCH_TAG = '3 - Add/update tags in Mailchimp';
+    static final String STAGE_MARK_CONTACTS_SYNCED = '4 - Mark Salesforce contacts as synced';
+    static final String STAGE_UPDATE_BATCH_STATUS = '5 - Check Mailchimp batch job status';
 
     class ContactFieldsResponse {
         public Integer total_created;
