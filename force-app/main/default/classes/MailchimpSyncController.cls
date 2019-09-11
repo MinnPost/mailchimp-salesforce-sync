@@ -1,5 +1,6 @@
 public with sharing class MailchimpSyncController {
     public List<Contact> contactList { get; private set; }
+    public String contactsNeedingSync { get; private set; }
     public List<Mailchimp_Sync_Error__c> recentSyncErrors { get; private set; }
     public List<Mailchimp_Batch_Operation__c> unfinishedBatchOperations { get; private set; }
     public List<AsyncApexJob> processingJobs { get; private set; }
@@ -7,6 +8,10 @@ public with sharing class MailchimpSyncController {
     public void fetchData() {
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
         this.contactList = mailchimp.contactsToSync(50);
+        Integer contactsCount = mailchimp.contactsCount();
+        this.contactsNeedingSync = (contactsCount > 0 ?
+                String.valueOf(contactsCount) : 'No'
+            ) + ' contacts to be synced';
         this.recentSyncErrors =
             [SELECT Id, Name, CreatedDate, Stage__c, Contact__c, Title__c, Detail__c
              FROM Mailchimp_Sync_Error__c

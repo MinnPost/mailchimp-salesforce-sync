@@ -41,7 +41,7 @@
                 <apex:column value="{!job.NumberOfErrors}" />
             </apex:pageBlockTable>
         </apex:pageBlock>
-        <apex:pageBlock title="Contacts to be synced">
+        <apex:pageBlock title="{!contactsNeedingSync}">
             <apex:pageBlockButtons>
                 <apex:commandButton action="{!pullInterests}" value="Pull Mailchimp groups" />
                 <apex:commandButton action="{!pullContacts}" value="Pull Mailchimp contacts" />
