@@ -489,7 +489,7 @@ public with sharing class MailchimpSyncManager {
             for (Database.Error err : upsertResult.getErrors()) {
                 System.debug(err.getStatusCode() + ': ' + err.getMessage());
                 result.contactErrors.put(
-                    cId,
+                    email,
                     new Mailchimp_Sync_Error__c(
                         Stage__c=STAGE_FETCH_MEMBERS,
                         Contact__c=cId,
@@ -507,16 +507,13 @@ public with sharing class MailchimpSyncManager {
             if (insertResult.isSuccess()) continue;
 
             System.debug('Error(s) creating contact.');
-            String email = c.Email;
-            ID cId = [SELECT Id FROM Contact WHERE Email = :email LIMIT 1].Id;
             for (Database.Error err : insertResult.getErrors()) {
                 System.debug(err.getStatusCode() + ': ' + err.getMessage());
                 result.contactErrors.put(
-                    cId,
+                    c.Email,
                     new Mailchimp_Sync_Error__c(
                         Stage__c=STAGE_FETCH_MEMBERS,
-                        Contact__c=cId,
-                        Title__c='Error while creating contact',
+                        Title__c='Error while creating contact ' + c.Email,
                         Detail__c=err.getMessage()
                     )
                 );
