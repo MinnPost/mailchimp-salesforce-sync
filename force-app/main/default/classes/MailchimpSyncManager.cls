@@ -521,11 +521,9 @@ public with sharing class MailchimpSyncManager {
         }
     }
 
-    public void collectContactsAndSubscriptions(
-        MailchimpAPI.Subscriber[] members,
-        Contact[] contacts,
-        MailchimpSubscription__c[] subscriptions
-    ) {
+    public Contact[] collectContacts(MailchimpAPI.Subscriber[] members) {
+        Contact[] contacts = new List<Contact>();
+
         for (MailchimpAPI.Subscriber member : members) {
             Contact c = new Contact(
                 Email=member.email_address,
@@ -534,6 +532,19 @@ public with sharing class MailchimpSyncManager {
                 MailchimpLastChanged__c=member.last_changed
             );
             contacts.add(c);
+        }
+
+        return contacts;
+    }
+
+    public MailchimpSubscription__c[] collectSubscriptions(
+        MailchimpAPI.Subscriber[] members,
+        Set<String> contactErrors
+    ) {
+        MailchimpSubscription__c[] subscriptions = new List<MailchimpSubscription__c>();
+
+        for (MailchimpAPI.Subscriber member : members) {
+            if (contactErrors.contains(member.email_address)) continue;
 
             // Create reference versions of the contact we can use to update subscriptions
             Contact contactRef = new Contact(
@@ -551,6 +562,8 @@ public with sharing class MailchimpSyncManager {
                 subscriptions.add(sub);
             }
         }
+
+        return subscriptions;
     }
 
     public void pullAll(Integer count) {
@@ -572,11 +585,14 @@ public with sharing class MailchimpSyncManager {
         }
         result.totalItems = memResult.totalItems;
 
-        Contact[] contacts = new List<Contact>();
-        MailchimpSubscription__c[] subscriptions = new List<MailchimpSubscription__c>();
-        this.collectContactsAndSubscriptions(memResult.members, contacts, subscriptions);
+        Contact[] contacts = this.collectContacts(memResult.members);
 
         this.upsertContacts(memResult.members, contacts, result);
+
+        MailchimpSubscription__c[] subscriptions = this.collectSubscriptions(
+            memResult.members,
+            result.contactErrors.keySet()
+        );
         upsert subscriptions;
 
         insert result.contactErrors.values();
