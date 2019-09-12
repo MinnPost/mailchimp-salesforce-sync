@@ -43,7 +43,6 @@
         </apex:pageBlock>
         <apex:pageBlock title="{!contactsNeedingSync}">
             <apex:pageBlockButtons>
-                <apex:commandButton action="{!pullInterests}" value="Pull Mailchimp groups" />
                 <apex:commandButton action="{!pullContacts}" value="Pull Mailchimp contacts" />
                 <apex:commandButton action="{!pushContacts}" value="Push contacts to Mailchimp" />
             </apex:pageBlockButtons>

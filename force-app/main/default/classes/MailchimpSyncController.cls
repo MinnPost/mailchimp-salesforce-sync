@@ -21,7 +21,7 @@ public with sharing class MailchimpSyncController {
             [SELECT Id, ApexClass.Name, CreatedDate, Status, ExtendedStatus, NumberOfErrors
              FROM AsyncApexJob
              WHERE ApexClassID IN (
-                SELECT Id FROM ApexClass WHERE Name IN ('MailchimpPullJob', 'MailchimpSyncJob')
+                SELECT Id FROM ApexClass WHERE Name IN ('MailchimpPullInterestsJob', 'MailchimpPullJob', 'MailchimpSyncJob')
              )
              ORDER BY CreatedDate DESC LIMIT 20];
     }
@@ -35,21 +35,11 @@ public with sharing class MailchimpSyncController {
         return redirect;
     }
 
-    public PageReference pullInterests() {
-        PageReference redirect = ApexPages.currentPage();
-        redirect.setRedirect(true);
-
-        MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        mailchimp.pullInterests();
-
-        return redirect;
-    }
-
     public PageReference pullContacts() {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
 
-        System.enqueueJob(new MailchimpPullJob(400, 0));
+        System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(400, 0)));
 
         return redirect;
     }
