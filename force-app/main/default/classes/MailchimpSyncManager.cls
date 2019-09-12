@@ -477,8 +477,17 @@ public with sharing class MailchimpSyncManager {
 
             if (upsertResult.isSuccess()) continue;
             if (this.shouldRetry(upsertResult)) {
-                c.FirstName = member.merge_fields.get('FNAME');
-                c.LastName = member.merge_fields.get('LNAME');
+                String firstName = member.merge_fields.get('FNAME');
+                if (firstName == null || firstName == '') {
+                    firstName = 'Subscriber';
+                }
+                String lastName = member.merge_fields.get('LNAME');
+                if (lastName == null || lastName == '') {
+                    lastName = 'Subscriber';
+                }
+
+                c.FirstName = firstName;
+                c.LastName = lastName;
                 contactsToInsert.add(c);
                 continue;
             }
