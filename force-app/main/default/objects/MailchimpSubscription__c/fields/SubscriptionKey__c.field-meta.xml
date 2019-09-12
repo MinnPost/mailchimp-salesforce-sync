@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SubscriptionKey__c</fullName>
+    <description>A combination of the Mailchimp subscriber e-mail hash and Mailchimp interest ID, used by the automatic sync process for updating subscriptions.</description>
+    <externalId>true</externalId>
+    <label>Subscription Key</label>
+    <length>43</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

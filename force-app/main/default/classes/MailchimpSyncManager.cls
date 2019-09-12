@@ -564,6 +564,7 @@ public with sharing class MailchimpSyncManager {
                 Interest__c interestRef = new Interest__c(InterestID__c=interestID);
                 MailchimpSubscription__c sub = new MailchimpSubscription__c(
                     Name=member.email_address + ' ' + interestID,
+                    SubscriptionKey__c=member.ID + '-' + interestID,
                     Contact__r=contactRef,
                     Interest__r=interestRef,
                     Subscribed__c=member.interests.get(interestID)
@@ -602,7 +603,7 @@ public with sharing class MailchimpSyncManager {
             memResult.members,
             result.contactErrors.keySet()
         );
-        upsert subscriptions;
+        Database.upsert(subscriptions, MailchimpSubscription__c.Fields.SubscriptionKey__c);
 
         insert result.contactErrors.values();
         return result;
