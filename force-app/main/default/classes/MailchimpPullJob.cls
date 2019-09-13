@@ -28,6 +28,11 @@ global with sharing class MailchimpPullJob implements Queueable, Database.Allows
                 new MailchimpPullJob(this.count, nextOffset)
             );
             System.debug('Queued another pull: ' + jobID);
+            return;
         }
+
+        // All done, now start pushing the Salesforce fields for the contacts
+        // we just pulled
+        Database.executeBatch(new MailchimpSyncJob(), 400);
     }
 }

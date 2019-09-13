@@ -34,15 +34,6 @@ public with sharing class MailchimpSyncController {
             'No';
     }
 
-    public PageReference pushContacts() {
-        PageReference redirect = ApexPages.currentPage();
-        redirect.setRedirect(true);
-
-        Database.executeBatch(new MailchimpSyncJob(), 400);
-
-        return redirect;
-    }
-
     public PageReference updateContacts() {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
@@ -52,7 +43,7 @@ public with sharing class MailchimpSyncController {
         return redirect;
     }
 
-    public PageReference pullAllContacts() {
+    public PageReference syncAllContacts() {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
 

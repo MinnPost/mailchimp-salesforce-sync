@@ -4,8 +4,7 @@
         <apex:pageBlock title="Sync Status">
             <apex:pageBlockButtons>
                 <apex:commandButton action="{!updateContacts}" value="Update Mailchimp contacts" />
-                <apex:commandButton action="{!pullAllContacts}" value="Pull ALL Mailchimp contacts" />
-                <apex:commandButton action="{!pushContacts}" value="Push contacts to Mailchimp" />
+                <apex:commandButton action="{!syncAllContacts}" value="Sync all Mailchimp contacts" />
             </apex:pageBlockButtons>
             <p>{!contactsNeedingSync} contacts are in the process of being synced.</p>
             <p>{!lastSyncCompletedAt}</p>
