@@ -1,29 +1,37 @@
 public with sharing class MailchimpSyncController {
-    public List<Contact> contactList { get; private set; }
     public String contactsNeedingSync { get; private set; }
+    public String lastSyncCompletedAt { get; private set; }
+    public String jobsInProgress { get; private set; }
     public List<Mailchimp_Sync_Error__c> recentSyncErrors { get; private set; }
     public List<Mailchimp_Batch_Operation__c> unfinishedBatchOperations { get; private set; }
-    public List<AsyncApexJob> processingJobs { get; private set; }
+    public List<AsyncApexJob> recentJobs { get; private set; }
 
     public void fetchData() {
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        this.contactList = mailchimp.contactsToSync(50);
         Integer contactsCount = mailchimp.contactsCount();
-        this.contactsNeedingSync = (contactsCount > 0 ?
-                String.valueOf(contactsCount) : 'No'
-            ) + ' contacts to be synced';
+        this.contactsNeedingSync = contactsCount > 0 ?
+                String.valueOf(contactsCount) :
+                'No';
+        Datetime lastSyncCompletedAt = mailchimp.lastSyncCompletedAt();
+        this.lastSyncCompletedAt = lastSyncCompletedAt == null ?
+            'No sync has been performed yet.' :
+            'Last sync finished at ' + lastSyncCompletedAt.format() + '.';
         this.recentSyncErrors =
             [SELECT Id, Name, CreatedDate, Stage__c, Contact__c, Title__c, Detail__c
              FROM Mailchimp_Sync_Error__c
              ORDER BY CreatedDate DESC LIMIT 20];
         this.unfinishedBatchOperations = mailchimp.unfinishedBatches(20);
-        this.processingJobs =
+        this.recentJobs =
             [SELECT Id, ApexClass.Name, CreatedDate, Status, ExtendedStatus, NumberOfErrors
              FROM AsyncApexJob
              WHERE ApexClassID IN (
                 SELECT Id FROM ApexClass WHERE Name IN ('MailchimpPullInterestsJob', 'MailchimpPullJob', 'MailchimpSyncJob')
              )
              ORDER BY CreatedDate DESC LIMIT 10];
+        Integer jobsInProgress = mailchimp.inProgressJobsCount();
+        this.jobsInProgress = jobsInProgress > 0 ?
+            String.valueOf(jobsInProgress) :
+            'No';
     }
 
     public PageReference pushContacts() {

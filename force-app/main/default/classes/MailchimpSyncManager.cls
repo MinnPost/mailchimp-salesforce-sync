@@ -93,7 +93,8 @@ public with sharing class MailchimpSyncManager {
 
     public String contactsCountQuery(Integer lim) {
         String query = 'SELECT COUNT() FROM Contact' +
-            ' WHERE Email != null AND MailchimpNeedsSync__c = TRUE';
+            ' WHERE (Email != null AND MailchimpNeedsSync__c = TRUE)' +
+            ' OR MailchimpBatchID__c != null';
         if (lim != null) {
             query += ' LIMIT ' + lim;
         }
@@ -130,6 +131,24 @@ public with sharing class MailchimpSyncManager {
             query += ' LIMIT ' + lim;
         }
         return Database.query(query);
+    }
+
+    public Datetime lastSyncCompletedAt() {
+        AggregateResult[] maxResults =
+            [SELECT MAX(MailchimpLastSyncedAt__c) mostRecentSyncedAt FROM Contact];
+        return (Datetime)maxResults[0].get('mostRecentSyncedAt');
+    }
+
+    public Integer inProgressJobsCount() {
+        return [SELECT COUNT() FROM AsyncApexJob
+                WHERE Status IN ('Preparing', 'Processing')
+                AND ApexClassID IN (
+                    SELECT Id FROM ApexClass WHERE Name IN (
+                        'MailchimpPullInterestsJob',
+                        'MailchimpPullJob',
+                        'MailchimpSyncJob'
+                    )
+                )];
     }
 
     private Mailchimp_Sync_Error__c reportError(String stage, String respBody) {
@@ -617,8 +636,7 @@ public with sharing class MailchimpSyncManager {
         MailchimpAPI mailchimp = new MailchimpAPI();
         Datetime mostRecentSyncedAt = null;
         if (sinceLastChanged) {
-            AggregateResult[] maxResults = [SELECT MAX(MailchimpLastSyncedAt__c) mostRecentSyncedAt FROM Contact];
-            mostRecentSyncedAt = (Datetime)maxResults[0].get('mostRecentSyncedAt');
+            mostRecentSyncedAt = this.lastSyncCompletedAt();
         }
         HttpResponse resp = mailchimp.fetchMembers(count, offset, mostRecentSyncedAt);
         MembersResult memResult = this.parseMembersResponse(resp.getBody());
