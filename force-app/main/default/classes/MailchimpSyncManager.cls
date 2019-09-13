@@ -180,13 +180,14 @@ public with sharing class MailchimpSyncManager {
         }
     }
 
-    private void parseBatchResponse(String respBody, Result result) {
+    private Mailchimp_Batch_Operation__c parseBatchResponse(String respBody, Result result) {
         Mailchimp_Batch_Operation__c batch = new Mailchimp_Batch_Operation__c();
         this.parseBatchResponse(respBody, result, batch);
         if (result.isError()) {
-            return;
+            return null;
         }
         insert batch;
+        return batch;
     }
 
     private void parseBatchResponse(String respBody, Result result, Mailchimp_Batch_Operation__c batch) {
@@ -232,7 +233,11 @@ public with sharing class MailchimpSyncManager {
         return result;
     }
 
-    private void markContactsSynced(Contact[] contacts, Map<String, Mailchimp_Sync_Error__c> contactErrors) {
+    private void markContactsSynced(
+        Contact[] contacts,
+        Map<String, Mailchimp_Sync_Error__c> contactErrors,
+        String tagBatchID
+    ) {
         DateTime lastSyncedAt = DateTime.now();
 
         // Mark contacts as synced
@@ -241,6 +246,7 @@ public with sharing class MailchimpSyncManager {
         for (Contact c : contacts) {
             if (contactErrors.containsKey(c.Email)) continue;
             c.MailchimpLastSyncedAt__c = lastSyncedAt;
+            c.MailchimpBatchID__c = tagBatchID;
         }
         Database.SaveResult[] results = Database.update(contacts);
         for (Database.SaveResult saveResult : results) {
@@ -278,14 +284,14 @@ public with sharing class MailchimpSyncManager {
             insert result.requestError;
             return result;
         }
-        this.parseBatchResponse(tagsResp.getBody(), result);
+        Mailchimp_Batch_Operation__c batch = this.parseBatchResponse(tagsResp.getBody(), result);
         if (result.isError()) {
             insert result.requestError;
             return result;
         }
 
         insert result.contactErrors.values();
-        this.markContactsSynced(contacts, result.contactErrors);
+        this.markContactsSynced(contacts, result.contactErrors, batch.Name);
         return result;
     }
 
@@ -304,6 +310,13 @@ public with sharing class MailchimpSyncManager {
         }
         insert errors;
         update updated;
+        String[] batchIDsForContactUpdate = new List<String>();
+        for (Mailchimp_Batch_Operation__c batch : updated) {
+            if (batch.Status__c == 'finished') {
+                batchIDsForContactUpdate.add(batch.Name);
+            }
+        }
+        MailchimpSyncManager.updateContactsInBatches(batchIDsForContactUpdate);
     }
 
     public void updateBatch(String batchId) {
@@ -338,6 +351,20 @@ public with sharing class MailchimpSyncManager {
 
         this.parseBatchResponse(resp.getBody(), result, batch);
         return result;
+    }
+
+    @future
+    public static void updateContactsInBatches(String[] batchIDs) {
+        Datetime lastSyncedAt = Datetime.now();
+        System.debug('Begin updating contacts for finished batches: ' + batchIDs);
+        for (Contact[] contacts : [SELECT Id, MailchimpBatchID__c, MailchimpLastSyncedAt__c FROM Contact WHERE MailchimpBatchID__c IN :batchIDs]) {
+            for (Contact c : contacts) {
+                c.MailchimpLastSyncedAt__c = lastSyncedAt;
+                c.MailchimpBatchId__c = null;
+            }
+            update contacts;
+        }
+        System.debug('End updating contacts for finished batches: ' + batchIDs);
     }
 
     public List<MailchimpAPI.Interest> pullInterestsInCategory(String categoryId) {
