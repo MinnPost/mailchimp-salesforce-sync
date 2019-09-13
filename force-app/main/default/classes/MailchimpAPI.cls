@@ -235,7 +235,7 @@ public class MailchimpAPI {
             '&count=' + count +
             '&offset=' + offset;
         if (changedSince != null) {
-            queryString += '&since_last_changed=' + changedSince.format('yyyy-MM-dd\'T\'HH:mm:ss.SSSZ');
+            queryString += '&since_last_changed=' + changedSince.formatGmt('yyyy-MM-dd\'T\'HH:mm:ss.SSSZ');
         }
         return this.get(this.membersEndpoint() + queryString);
     }
