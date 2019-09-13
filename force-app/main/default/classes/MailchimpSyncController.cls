@@ -23,7 +23,7 @@ public with sharing class MailchimpSyncController {
              WHERE ApexClassID IN (
                 SELECT Id FROM ApexClass WHERE Name IN ('MailchimpPullInterestsJob', 'MailchimpPullJob', 'MailchimpSyncJob')
              )
-             ORDER BY CreatedDate DESC LIMIT 20];
+             ORDER BY CreatedDate DESC LIMIT 10];
     }
 
     public PageReference pushContacts() {

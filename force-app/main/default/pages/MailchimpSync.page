@@ -1,20 +1,14 @@
 <apex:page title="Mailchimp Sync" controller="MailchimpSyncController" action="{!fetchData}">
     <apex:pageMessages showDetail="TRUE" />
     <apex:form>
-        <apex:pageBlock title="Recent sync errors">
-            <apex:pageBlockButtons location="top">
-                <apex:commandButton action="{!URLFOR($Action.Mailchimp_Sync_Error__c.List, $ObjectType.Mailchimp_Sync_Error__c.keyPrefix)}" value="View all" />
-            </apex:pageBlockButtons>
-            <apex:pageBlockTable var="syncError" value="{!recentSyncErrors}">
-                <apex:column value="{!syncError.CreatedDate}" />
-                <apex:column>
-                    <apex:facet name="header">Error ID</apex:facet>
-                    <apex:outputLink value="{!URLFOR($Action.Mailchimp_Sync_Error__c.View, syncError.Id)}">{!syncError.Name}</apex:outputLink>
-                </apex:column>
-                <apex:column value="{!syncError.Stage__c}" />
-                <apex:column value="{!syncError.Contact__c}" />
-                <apex:column value="{!syncError.Title__c}" />
-                <apex:column value="{!syncError.Detail__c}" />
+        <apex:pageBlock title="Recent scheduled jobs">
+            <apex:pageBlockTable var="job" value="{!processingJobs}">
+                <apex:column value="{!job.Id}" />
+                <apex:column value="{!job.ApexClass.Name}" />
+                <apex:column value="{!job.CreatedDate}" />
+                <apex:column value="{!job.Status}" />
+                <apex:column value="{!job.ExtendedStatus}" />
+                <apex:column value="{!job.NumberOfErrors}" />
             </apex:pageBlockTable>
         </apex:pageBlock>
         <apex:pageBlock title="Mailchimp batch operations in progress">
@@ -31,14 +25,21 @@
                 <apex:column value="{!batch.Status__c}" />
             </apex:pageBlockTable>
         </apex:pageBlock>
-        <apex:pageBlock title="Recent scheduled jobs">
-            <apex:pageBlockTable var="job" value="{!processingJobs}">
-                <apex:column value="{!job.Id}" />
-                <apex:column value="{!job.ApexClass.Name}" />
-                <apex:column value="{!job.CreatedDate}" />
-                <apex:column value="{!job.Status}" />
-                <apex:column value="{!job.ExtendedStatus}" />
-                <apex:column value="{!job.NumberOfErrors}" />
+
+        <apex:pageBlock title="Recent sync errors">
+            <apex:pageBlockButtons location="top">
+                <apex:commandButton action="{!URLFOR($Action.Mailchimp_Sync_Error__c.List, $ObjectType.Mailchimp_Sync_Error__c.keyPrefix)}" value="View all" />
+            </apex:pageBlockButtons>
+            <apex:pageBlockTable var="syncError" value="{!recentSyncErrors}">
+                <apex:column value="{!syncError.CreatedDate}" />
+                <apex:column>
+                    <apex:facet name="header">Error ID</apex:facet>
+                    <apex:outputLink value="{!URLFOR($Action.Mailchimp_Sync_Error__c.View, syncError.Id)}">{!syncError.Name}</apex:outputLink>
+                </apex:column>
+                <apex:column value="{!syncError.Stage__c}" />
+                <apex:column value="{!syncError.Contact__c}" />
+                <apex:column value="{!syncError.Title__c}" />
+                <apex:column value="{!syncError.Detail__c}" />
             </apex:pageBlockTable>
         </apex:pageBlock>
         <apex:pageBlock title="{!contactsNeedingSync}">
