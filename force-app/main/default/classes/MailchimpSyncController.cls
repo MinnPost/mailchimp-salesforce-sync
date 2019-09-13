@@ -25,7 +25,7 @@ public with sharing class MailchimpSyncController {
             [SELECT Id, ApexClass.Name, CreatedDate, Status, ExtendedStatus, NumberOfErrors
              FROM AsyncApexJob
              WHERE ApexClassID IN (
-                SELECT Id FROM ApexClass WHERE Name IN ('MailchimpPullInterestsJob', 'MailchimpPullJob', 'MailchimpSyncJob')
+                SELECT Id FROM ApexClass WHERE Name IN ('MailchimpPullInterestsJob', 'MailchimpPullJob', 'MailchimpPushJob', 'MailchimpSyncJob')
              )
              ORDER BY CreatedDate DESC LIMIT 10];
         Integer jobsInProgress = mailchimp.inProgressJobsCount();

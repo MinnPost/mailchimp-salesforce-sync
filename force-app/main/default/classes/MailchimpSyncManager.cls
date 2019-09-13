@@ -146,6 +146,7 @@ public with sharing class MailchimpSyncManager {
                     SELECT Id FROM ApexClass WHERE Name IN (
                         'MailchimpPullInterestsJob',
                         'MailchimpPullJob',
+                        'MailchimpPushJob',
                         'MailchimpSyncJob'
                     )
                 )];
