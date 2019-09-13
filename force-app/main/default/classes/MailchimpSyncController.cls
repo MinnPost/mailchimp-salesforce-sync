@@ -35,11 +35,20 @@ public with sharing class MailchimpSyncController {
         return redirect;
     }
 
-    public PageReference pullContacts() {
+    public PageReference updateContacts() {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
 
         System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(400, 0)));
+
+        return redirect;
+    }
+
+    public PageReference pullAllContacts() {
+        PageReference redirect = ApexPages.currentPage();
+        redirect.setRedirect(true);
+
+        System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(400, 0, false)));
 
         return redirect;
     }

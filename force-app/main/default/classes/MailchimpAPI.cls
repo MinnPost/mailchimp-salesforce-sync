@@ -222,6 +222,10 @@ public class MailchimpAPI {
         return this.post('batches', body.getAsString());
     }
 
+    public HttpResponse fetchMembers(Integer count, Integer offset) {
+        return this.fetchMembers(count, offset, null);
+    }
+
     public HttpResponse fetchMembers(Integer count, Integer offset, Datetime changedSince) {
         String fields = String.join(MEMBERS_FIELDS, ',');
         String queryString =

@@ -581,11 +581,18 @@ public with sharing class MailchimpSyncManager {
     }
 
     public Result pullAll(Integer count, Integer offset) {
+        return this.pullAll(count, offset, true);
+    }
+
+    public Result pullAll(Integer count, Integer offset, Boolean sinceLastChanged) {
         Result result = new Result();
 
         MailchimpAPI mailchimp = new MailchimpAPI();
-        AggregateResult[] maxResults = [SELECT MAX(MailchimpLastSyncedAt__c) mostRecentSyncedAt FROM Contact];
-        Datetime mostRecentSyncedAt = (Datetime)maxResults[0].get('mostRecentSyncedAt');
+        Datetime mostRecentSyncedAt = null;
+        if (sinceLastChanged) {
+            AggregateResult[] maxResults = [SELECT MAX(MailchimpLastSyncedAt__c) mostRecentSyncedAt FROM Contact];
+            mostRecentSyncedAt = (Datetime)maxResults[0].get('mostRecentSyncedAt');
+        }
         HttpResponse resp = mailchimp.fetchMembers(count, offset, mostRecentSyncedAt);
         MembersResult memResult = this.parseMembersResponse(resp.getBody());
         if (memResult.isError()) {
