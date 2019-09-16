@@ -73,12 +73,13 @@ public with sharing class MailchimpSyncManager {
     }
 
     public String contactsQuery(Integer lim) {
-        // TODO: annual donation history
         String query = 'SELECT ID, Email, FirstName, LastName, Drupal_ID__c, Drupal_Username__c,' +
             ' Account.ID, Account.SF_Record_Type__c,' +
             ' Account.Membership_Level_Number__c, Account.Membership_Level__c,' +
             ' Account.Membership_level_qualification_amount__c, Account.Membership_Expiration_Date__c,' +
             ' Account.Recurring_donations_Annualized_value_new__c,' +
+            ' Account.CY_contribution_revenue__c, Account.CY_1_contribution_revenue__c,' +
+            ' Account.CY_2_contribution_revenue__c, Account.CY_3_contribution_revenue__c,' +
             ' Active_sustainer_account__c, Is_partner_offer_eligible__c,' +
             ' Current_member__c, Lapsed_member__c, Never_member__c,' +
             ' MinnPost_com_user_account__c' +

@@ -9,6 +9,10 @@ public class MailchimpAPI {
     static final String FIELD_MEMBER_LEVEL_QUALIFICATION_AMOUNT = 'MEMLEV_AMT';
     static final String FIELD_MEMBER_EXPIRATION_DATE = 'MEMBER_EXP';
     static final String FIELD_RECURRING_DONATIONS_AMOUNT = 'RECURR_AMT';
+    static final String FIELD_CY_3_CONTRIBUTIONS = 'CY_3_CONTR';
+    static final String FIELD_CY_2_CONTRIBUTIONS = 'CY_2_CONTR';
+    static final String FIELD_CY_1_CONTRIBUTIONS = 'CY_1_CONTR';
+    static final String FIELD_CY_CONTRIBUTIONS = 'CY_CONTRIB';
     static final String FIELD_CMS_USER_ID = 'CMS_UID';
     static final String FIELD_CMS_USERNAME = 'CMS_USER';
     static final Map<String, String> CONTACT_FIELDS = new Map<String, String>{
@@ -25,7 +29,11 @@ public class MailchimpAPI {
         FIELD_MEMBER_LEVEL => 'Membership_Level__c',
         FIELD_MEMBER_LEVEL_QUALIFICATION_AMOUNT => 'Membership_level_qualification_amount__c',
         FIELD_MEMBER_EXPIRATION_DATE => 'Membership_Expiration_Date__c',
-        FIELD_RECURRING_DONATIONS_AMOUNT => 'Recurring_donations_Annualized_value_new__c'
+        FIELD_RECURRING_DONATIONS_AMOUNT => 'Recurring_donations_Annualized_value_new__c',
+        FIELD_CY_3_CONTRIBUTIONS => 'CY_3_contribution_revenue__c',
+        FIELD_CY_2_CONTRIBUTIONS => 'CY_2_contribution_revenue__c',
+        FIELD_CY_1_CONTRIBUTIONS => 'CY_1_contribution_revenue__c',
+        FIELD_CY_CONTRIBUTIONS => 'CY_contribution_revenue__c'
     };
 
     static final String TAG_ACTIVE_SUSTAINER = 'Active sustainer';
@@ -207,6 +215,10 @@ public class MailchimpAPI {
             this.writeContactNumberField(body, c, FIELD_MEMBER_LEVEL_QUALIFICATION_AMOUNT);
             this.writeContactDatetimeField(body, c, FIELD_MEMBER_EXPIRATION_DATE);
             this.writeContactNumberField(body, c, FIELD_RECURRING_DONATIONS_AMOUNT);
+            this.writeContactNumberField(body, c, FIELD_CY_3_CONTRIBUTIONS);
+            this.writeContactNumberField(body, c, FIELD_CY_2_CONTRIBUTIONS);
+            this.writeContactNumberField(body, c, FIELD_CY_1_CONTRIBUTIONS);
+            this.writeContactNumberField(body, c, FIELD_CY_CONTRIBUTIONS);
             this.writeContactStringField(body, c, FIELD_CMS_USER_ID);
             this.writeContactStringField(body, c, FIELD_CMS_USERNAME);
             body.writeEndObject();
