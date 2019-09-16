@@ -513,7 +513,9 @@ public with sharing class MailchimpSyncManager {
         return false;
     }
 
-    private void upsertContacts(MailchimpAPI.Subscriber[] members, Contact[] contacts, Result result) {
+    private Map<String, Mailchimp_Sync_Error__c> upsertContacts(MailchimpAPI.Subscriber[] members, Contact[] contacts) {
+        Map<String, Mailchimp_Sync_Error__c> contactErrors = new Map<String, Mailchimp_Sync_Error__c>();
+
         // Try to upsert without first/last name, check for the appropriate error.
         // New records will come back with a result with isCreated() == TRUE,
         // and a REQUIRED_FIELD_MISSING error on LastName.
@@ -546,7 +548,7 @@ public with sharing class MailchimpSyncManager {
             ID cId = [SELECT Id FROM Contact WHERE Email = :email LIMIT 1].Id;
             for (Database.Error err : upsertResult.getErrors()) {
                 System.debug(err.getStatusCode() + ': ' + err.getMessage());
-                result.contactErrors.put(
+                contactErrors.put(
                     email,
                     new Mailchimp_Sync_Error__c(
                         Stage__c=STAGE_FETCH_MEMBERS,
@@ -567,7 +569,7 @@ public with sharing class MailchimpSyncManager {
             System.debug('Error(s) creating contact.');
             for (Database.Error err : insertResult.getErrors()) {
                 System.debug(err.getStatusCode() + ': ' + err.getMessage());
-                result.contactErrors.put(
+                contactErrors.put(
                     c.Email,
                     new Mailchimp_Sync_Error__c(
                         Stage__c=STAGE_FETCH_MEMBERS,
@@ -577,6 +579,8 @@ public with sharing class MailchimpSyncManager {
                 );
             }
         }
+
+        return contactErrors;
     }
 
     public Contact[] collectContacts(MailchimpAPI.Subscriber[] members) {
@@ -634,8 +638,6 @@ public with sharing class MailchimpSyncManager {
     }
 
     public PullResult pullAll(Integer count, Integer offset, Boolean sinceLastChanged) {
-        Result result = new Result();
-
         MailchimpAPI mailchimp = new MailchimpAPI();
         Datetime mostRecentSyncedAt = null;
         if (sinceLastChanged) {
@@ -654,14 +656,14 @@ public with sharing class MailchimpSyncManager {
         }
 
         Contact[] contacts = this.collectContacts(memResult.members);
-        this.upsertContacts(memResult.members, contacts, result);
+        Map<String, Mailchimp_Sync_Error__c> contactErrors = this.upsertContacts(memResult.members, contacts);
+        insert contactErrors.values();
 
         MailchimpSubscription__c[] subscriptions = this.collectSubscriptions(
             memResult.members,
-            result.contactErrors.keySet()
+            contactErrors.keySet()
         );
         Database.upsert(subscriptions, MailchimpSubscription__c.Fields.SubscriptionKey__c);
-        insert result.contactErrors.values();
 
         if (memResult.totalItems > count + offset) {
             return PullResult.MORE_TO_PULL;
