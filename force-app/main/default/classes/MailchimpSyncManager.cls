@@ -629,10 +629,6 @@ public with sharing class MailchimpSyncManager {
         return subscriptions;
     }
 
-    public void pullAll(Integer count) {
-        this.pullAll(count, 0);
-    }
-
     public PullResult pullAll(Integer count, Integer offset) {
         return this.pullAll(count, offset, true);
     }
