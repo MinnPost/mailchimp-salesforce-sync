@@ -1,4 +1,33 @@
 public class MailchimpAPI {
+    static final String FIELD_CONTACT_ID = 'SF_CONTACT';
+    static final String FIELD_ACCOUNT_ID = 'SF_ACCOUNT';
+    static final String FIELD_ACCOUNT_TYPE = 'SFACCTTYPE';
+    static final String FIELD_FIRST_NAME = 'FNAME';
+    static final String FIELD_LAST_NAME = 'LNAME';
+    static final String FIELD_MEMBER_LEVEL = 'MEMBER_LEV';
+    static final String FIELD_MEMBER_LEVEL_NUMBER = 'MEMLEV_NUM';
+    static final String FIELD_MEMBER_LEVEL_QUALIFICATION_AMOUNT = 'MEMLEV_AMT';
+    static final String FIELD_MEMBER_EXPIRATION_DATE = 'MEMBER_EXP';
+    static final String FIELD_RECURRING_DONATIONS_AMOUNT = 'RECURR_AMT';
+    static final String FIELD_CMS_USER_ID = 'CMS_UID';
+    static final String FIELD_CMS_USERNAME = 'CMS_USER';
+    static final Map<String, String> CONTACT_FIELDS = new Map<String, String>{
+        FIELD_CONTACT_ID => 'Id',
+        FIELD_FIRST_NAME => 'FirstName',
+        FIELD_LAST_NAME => 'LastName',
+        FIELD_CMS_USER_ID => 'Drupal_ID__c',
+        FIELD_CMS_USERNAME => 'Drupal_Username__c'
+    };
+    static final Map<String, String> ACCOUNT_FIELDS = new Map<String, String>{
+        FIELD_ACCOUNT_ID => 'Id',
+        FIELD_ACCOUNT_TYPE => 'SF_Record_Type__c',
+        FIELD_MEMBER_LEVEL_NUMBER => 'Membership_Level_Number__c',
+        FIELD_MEMBER_LEVEL => 'Membership_Level__c',
+        FIELD_MEMBER_LEVEL_QUALIFICATION_AMOUNT => 'Membership_level_qualification_amount__c',
+        FIELD_MEMBER_EXPIRATION_DATE => 'Membership_Expiration_Date__c',
+        FIELD_RECURRING_DONATIONS_AMOUNT => 'Recurring_donations_Annualized_value_new__c'
+    };
+
     static final String TAG_ACTIVE_SUSTAINER = 'Active sustainer';
     static final String TAG_CMS_USER = 'CMS user';
     static final String TAG_CURRENT_MEMBER = 'Current member';
@@ -13,6 +42,17 @@ public class MailchimpAPI {
         TAG_NEVER_MEMBER => 'Never_member__c',
         TAG_PARTNER_OFFER_ELIGIBLE => 'Is_partner_offer_eligible__c'
     };
+
+    static Object getField(Contact c, String field) {
+        if (ACCOUNT_FIELDS.containsKey(field)) {
+            return c.Account.get(ACCOUNT_FIELDS.get(field));
+        }
+        return c.get(CONTACT_FIELDS.get(field));
+    }
+
+    static Boolean getTagValue(Contact c, String tag) {
+        return (Boolean)c.get(TAG_FIELDS.get(tag));
+    }
 
     static final String[] MEMBERS_FIELDS = new List<String>{
         'total_items',
@@ -120,6 +160,27 @@ public class MailchimpAPI {
         return this.connection.send(req);
     }
 
+    private void writeContactStringField(JSONGenerator body, Contact c, String field) {
+        String value = (String)MailchimpAPI.getField(c, field);
+        if (value == null) return;
+
+        body.writeStringField(field, value);
+    }
+
+    private void writeContactNumberField(JSONGenerator body, Contact c, String field) {
+        Decimal value = (Decimal)MailchimpAPI.getField(c, field);
+        if (value == null) return;
+
+        body.writeNumberField(field, value);
+    }
+
+    private void writeContactDatetimeField(JSONGenerator body, Contact c, String field) {
+        Datetime value = (Datetime)MailchimpAPI.getField(c, field);
+        if (value == null) return;
+
+        body.writeDateTimeField(field, value);
+    }
+
     public HttpResponse pushContactFields(List<Contact> contacts) {
         // Sync to Mailchimp using bulk-add endpoint
         // - what about deletes? Unlikely that a contact would ever be removed from Salesforce
@@ -139,33 +200,15 @@ public class MailchimpAPI {
             body.writeStringField('SF_CONTACT', c.Id);
             body.writeStringField('SF_ACCOUNT', c.Account.Id);
             body.writeStringField('SFACCTTYPE', c.Account.SF_Record_Type__c);
-            if (c.FirstName != null) {
-                body.writeStringField('FNAME', c.FirstName);
-            }
-            if (c.LastName != null) {
-                body.writeStringField('LNAME', c.LastName);
-            }
-            if (c.Account.Membership_Level_Number__c != null) {
-                body.writeNumberField('MEMLEV_NUM', c.Account.Membership_Level_Number__c);
-            }
-            if (c.Account.Membership_Level__c != null) {
-                body.writeStringField('MEMBER_LEV', c.Account.Membership_Level__c);
-            }
-            if (c.Account.Membership_level_qualification_amount__c != null) {
-                body.writeNumberField('MEMLEV_AMT', c.Account.Membership_level_qualification_amount__c);
-            }
-            if (c.Account.Membership_Expiration_Date__c != null) {
-                body.writeDateTimeField('MEMBER_EXP', c.Account.Membership_Expiration_Date__c);
-            }
-            if (c.Account.Recurring_donations_Annualized_value_new__c != null) {
-                body.writeNumberField('RECURR_AMT', c.Account.Recurring_donations_Annualized_value_new__c);
-            }
-            if (c.Drupal_ID__c != null) {
-                body.writeStringField('CMS_UID', c.Drupal_ID__c);
-            }
-            if (c.Drupal_Username__c != null) {
-                body.writeStringField('CMS_USER', c.Drupal_Username__c);
-            }
+            this.writeContactStringField(body, c, FIELD_FIRST_NAME);
+            this.writeContactStringField(body, c, FIELD_LAST_NAME);
+            this.writeContactNumberField(body, c, FIELD_MEMBER_LEVEL_NUMBER);
+            this.writeContactStringField(body, c, FIELD_MEMBER_LEVEL);
+            this.writeContactNumberField(body, c, FIELD_MEMBER_LEVEL_QUALIFICATION_AMOUNT);
+            this.writeContactDatetimeField(body, c, FIELD_MEMBER_EXPIRATION_DATE);
+            this.writeContactNumberField(body, c, FIELD_RECURRING_DONATIONS_AMOUNT);
+            this.writeContactStringField(body, c, FIELD_CMS_USER_ID);
+            this.writeContactStringField(body, c, FIELD_CMS_USERNAME);
             body.writeEndObject();
             body.writeEndObject();
         }
@@ -177,7 +220,7 @@ public class MailchimpAPI {
     }
 
     private void writeTagField(JSONGenerator tagsBody, Contact c, String tag) {
-        Boolean active = (Boolean)c.get(TAG_FIELDS.get(tag));
+        Boolean active = MailchimpAPI.getTagValue(c, tag);
         if (active == null) {
             active = false;
         }
