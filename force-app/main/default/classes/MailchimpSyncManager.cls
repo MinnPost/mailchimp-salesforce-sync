@@ -545,15 +545,15 @@ public with sharing class MailchimpSyncManager {
 
             System.debug('Error(s) updating contact.');
             String email = c.Email;
-            ID cId = [SELECT Id FROM Contact WHERE Email = :email LIMIT 1].Id;
+            Contact contactRef = new Contact(MailchimpEmailHash__c=member.ID);
             for (Database.Error err : upsertResult.getErrors()) {
                 System.debug(err.getStatusCode() + ': ' + err.getMessage());
                 contactErrors.put(
                     email,
                     new Mailchimp_Sync_Error__c(
                         Stage__c=STAGE_FETCH_MEMBERS,
-                        Contact__c=cId,
-                        Title__c='Error while updating contact',
+                        Contact__r=contactRef,
+                        Title__c='Error while updating contact ' + email,
                         Detail__c=err.getMessage()
                     )
                 );
