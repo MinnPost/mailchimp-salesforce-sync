@@ -1,9 +1,14 @@
 public with sharing class MailchimpSyncManager {
     static final String STAGE_FETCH_MEMBERS = '1 - Fetch contacts from Mailchimp';
-    static final String STAGE_BATCH_SUB_UNSUB = '2 - Add/update contacts in Mailchimp';
-    static final String STAGE_BATCH_TAG = '3 - Add/update tags in Mailchimp';
-    static final String STAGE_MARK_CONTACTS_SYNCED = '4 - Mark Salesforce contacts as synced';
-    static final String STAGE_UPDATE_BATCH_STATUS = '5 - Check Mailchimp batch job status';
+    static final String STAGE_UPDATE_SUBSCRIPTIONS = '2 - Update Mailchimp list subscriptions';
+//  static final String STAGE_BATCH_SUB_UNSUB = '2 - Add/update contacts in Mailchimp';
+    static final String STAGE_BATCH_SUB_UNSUB = '3 - Add/update contacts in Mailchimp';
+//  static final String STAGE_BATCH_TAG = '3 - Add/update tags in Mailchimp';
+    static final String STAGE_BATCH_TAG = '4 - Add/update tags in Mailchimp';
+//  static final String STAGE_MARK_CONTACTS_SYNCED = '4 - Mark Salesforce contacts as synced';
+    static final String STAGE_MARK_CONTACTS_SYNCED = '5 - Mark Salesforce contacts as synced';
+//  static final String STAGE_UPDATE_BATCH_STATUS = '5 - Check Mailchimp batch job status';
+    static final String STAGE_UPDATE_BATCH_STATUS = '6 - Check Mailchimp batch job status';
 
     public enum PullResult { MORE_TO_PULL, DONE, ERROR }
 
@@ -570,7 +575,7 @@ public with sharing class MailchimpSyncManager {
                         Stage__c=STAGE_FETCH_MEMBERS,
                         Contact__r=contactRef,
                         Title__c='Error while updating contact ' + email,
-                        Detail__c=err.getMessage()
+                        Detail__c=err.getStatusCode() + ': ' + err.getMessage()
                     )
                 );
             }
@@ -590,7 +595,7 @@ public with sharing class MailchimpSyncManager {
                     new Mailchimp_Sync_Error__c(
                         Stage__c=STAGE_FETCH_MEMBERS,
                         Title__c='Error while creating contact ' + c.Email,
-                        Detail__c=err.getMessage()
+                        Detail__c=err.getStatusCode() + ': ' + err.getMessage()
                     )
                 );
             }
@@ -629,6 +634,31 @@ public with sharing class MailchimpSyncManager {
         return subscriptions;
     }
 
+    private Mailchimp_Sync_Error__c[] upsertSubscriptions(MailchimpSubscription__c[] subscriptions) {
+        Mailchimp_Sync_Error__c[] subscriptionErrors = new List<Mailchimp_Sync_Error__c>();
+
+        Database.UpsertResult[] results =
+            Database.upsert(subscriptions, MailchimpSubscription__c.Fields.SubscriptionKey__c, false);
+        for (Integer i = 0; i < results.size(); ++i) {
+            Database.UpsertResult result = results[i];
+            MailchimpSubscription__c subscription = subscriptions[i];
+            if (result.isSuccess()) continue;
+
+            System.debug('Error(s) updating subscriptions.');
+            for (Database.Error err : result.getErrors()) {
+                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                subscriptionErrors.add(new Mailchimp_Sync_Error__c(
+                    Stage__c=STAGE_UPDATE_SUBSCRIPTIONS,
+                    Contact__r=subscription.Contact__r,
+                    Title__c='Error while updating subscription ' + subscription.Name,
+                    Detail__c=err.getStatusCode() + ': ' + err.getMessage()
+                ));
+            }
+        }
+
+        return subscriptionErrors;
+    }
+
     public PullResult pullAll(Integer count, Integer offset) {
         return this.pullAll(count, offset, true);
     }
@@ -641,7 +671,8 @@ public with sharing class MailchimpSyncManager {
         }
         HttpResponse resp = mailchimp.fetchMembers(count, offset, mostRecentSyncedAt);
         if (resp.getStatusCode() != 200) {
-            Mailchimp_Sync_Error__c err = this.reportError(STAGE_FETCH_MEMBERS, resp.getBody());
+            Mailchimp_Sync_Error__c err =
+                this.reportError(STAGE_FETCH_MEMBERS, resp.getBody());
             insert err;
             return PullResult.ERROR;
         }
@@ -652,14 +683,17 @@ public with sharing class MailchimpSyncManager {
         }
 
         Contact[] contacts = this.collectContacts(memResult.members);
-        Map<String, Mailchimp_Sync_Error__c> contactErrors = this.upsertContacts(memResult.members, contacts);
+        Map<String, Mailchimp_Sync_Error__c> contactErrors =
+            this.upsertContacts(memResult.members, contacts);
         insert contactErrors.values();
 
         MailchimpSubscription__c[] subscriptions = this.collectSubscriptions(
             memResult.members,
             contactErrors.keySet()
         );
-        Database.upsert(subscriptions, MailchimpSubscription__c.Fields.SubscriptionKey__c);
+        Mailchimp_Sync_Error__c[] subscriptionErrors =
+            this.upsertSubscriptions(subscriptions);
+        insert subscriptionErrors;
 
         if (memResult.totalItems > count + offset) {
             return PullResult.MORE_TO_PULL;
