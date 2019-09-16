@@ -15,17 +15,14 @@ global with sharing class MailchimpPullJob implements Queueable, Database.Allows
 
     public void execute(QueueableContext context) {
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        MailchimpSyncManager.Result result =
+        MailchimpSyncManager.PullResult result =
             mailchimp.pullAll(this.count, this.offset, this.sinceLastChanged);
 
-        System.debug(result);
-        if (result.isError()) return;
+        if (result == MailchimpSyncManager.PullResult.ERROR) return;
 
-        Integer nextOffset = this.offset + this.count;
-        if (result.totalItems > nextOffset) {
-            // queue another
+        if (result == MailchimpSyncManager.PullResult.MORE_TO_PULL) {
             ID jobID = System.enqueueJob(
-                new MailchimpPullJob(this.count, nextOffset)
+                new MailchimpPullJob(this.count, this.offset + this.count)
             );
             System.debug('Queued another pull: ' + jobID);
             return;

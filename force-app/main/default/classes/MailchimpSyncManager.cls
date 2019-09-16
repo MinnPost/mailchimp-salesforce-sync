@@ -5,6 +5,8 @@ public with sharing class MailchimpSyncManager {
     static final String STAGE_MARK_CONTACTS_SYNCED = '4 - Mark Salesforce contacts as synced';
     static final String STAGE_UPDATE_BATCH_STATUS = '5 - Check Mailchimp batch job status';
 
+    public enum PullResult { MORE_TO_PULL, DONE, ERROR }
+
     class ContactFieldsResponse {
         public Integer total_created;
         public Integer total_updated;
@@ -627,11 +629,11 @@ public with sharing class MailchimpSyncManager {
         this.pullAll(count, 0);
     }
 
-    public Result pullAll(Integer count, Integer offset) {
+    public PullResult pullAll(Integer count, Integer offset) {
         return this.pullAll(count, offset, true);
     }
 
-    public Result pullAll(Integer count, Integer offset, Boolean sinceLastChanged) {
+    public PullResult pullAll(Integer count, Integer offset, Boolean sinceLastChanged) {
         Result result = new Result();
 
         MailchimpAPI mailchimp = new MailchimpAPI();
@@ -640,16 +642,18 @@ public with sharing class MailchimpSyncManager {
             mostRecentSyncedAt = this.lastSyncCompletedAt();
         }
         HttpResponse resp = mailchimp.fetchMembers(count, offset, mostRecentSyncedAt);
+        if (resp.getStatusCode() != 200) {
+            Mailchimp_Sync_Error__c err = this.reportError(STAGE_FETCH_MEMBERS, resp.getBody());
+            insert err;
+            return PullResult.ERROR;
+        }
         MembersResult memResult = this.parseMembersResponse(resp.getBody());
         if (memResult.isError()) {
             insert memResult.requestError;
-            result.requestError = memResult.requestError;
-            return result;
+            return PullResult.ERROR;
         }
-        result.totalItems = memResult.totalItems;
 
         Contact[] contacts = this.collectContacts(memResult.members);
-
         this.upsertContacts(memResult.members, contacts, result);
 
         MailchimpSubscription__c[] subscriptions = this.collectSubscriptions(
@@ -657,8 +661,12 @@ public with sharing class MailchimpSyncManager {
             result.contactErrors.keySet()
         );
         Database.upsert(subscriptions, MailchimpSubscription__c.Fields.SubscriptionKey__c);
-
         insert result.contactErrors.values();
-        return result;
+
+        if (memResult.totalItems > count + offset) {
+            return PullResult.MORE_TO_PULL;
+        }
+
+        return PullResult.DONE;
     }
 }
