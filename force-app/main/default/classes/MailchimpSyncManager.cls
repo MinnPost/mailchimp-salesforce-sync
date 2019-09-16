@@ -1,14 +1,11 @@
 public with sharing class MailchimpSyncManager {
-    static final String STAGE_FETCH_MEMBERS = '1 - Fetch contacts from Mailchimp';
-    static final String STAGE_UPDATE_SUBSCRIPTIONS = '2 - Update Mailchimp list subscriptions';
-//  static final String STAGE_BATCH_SUB_UNSUB = '2 - Add/update contacts in Mailchimp';
-    static final String STAGE_BATCH_SUB_UNSUB = '3 - Add/update contacts in Mailchimp';
-//  static final String STAGE_BATCH_TAG = '3 - Add/update tags in Mailchimp';
-    static final String STAGE_BATCH_TAG = '4 - Add/update tags in Mailchimp';
-//  static final String STAGE_MARK_CONTACTS_SYNCED = '4 - Mark Salesforce contacts as synced';
-    static final String STAGE_MARK_CONTACTS_SYNCED = '5 - Mark Salesforce contacts as synced';
-//  static final String STAGE_UPDATE_BATCH_STATUS = '5 - Check Mailchimp batch job status';
-    static final String STAGE_UPDATE_BATCH_STATUS = '6 - Check Mailchimp batch job status';
+    static final String STAGE_FETCH_INTERESTS = '1 - Fetch interests from Mailchimp';
+    static final String STAGE_FETCH_MEMBERS = '2 - Fetch contacts from Mailchimp';
+    static final String STAGE_UPDATE_SUBSCRIPTIONS = '3 - Update Mailchimp list subscriptions';
+    static final String STAGE_BATCH_SUB_UNSUB = '4 - Add/update contacts in Mailchimp';
+    static final String STAGE_BATCH_TAG = '5 - Add/update tags in Mailchimp';
+    static final String STAGE_MARK_CONTACTS_SYNCED = '6 - Mark Salesforce contacts as synced';
+    static final String STAGE_UPDATE_BATCH_STATUS = '7 - Check Mailchimp batch job status';
 
     public enum PullResult { MORE_TO_PULL, DONE, ERROR }
 
@@ -394,45 +391,35 @@ public with sharing class MailchimpSyncManager {
         System.debug('End updating contacts for finished batches: ' + batchIDs);
     }
 
-    public List<MailchimpAPI.Interest> pullInterestsInCategory(String categoryId) {
-        List<MailchimpAPI.Interest> interests = new List<MailchimpAPI.Interest>();
+    public MailchimpAPI.Interest[] pullInterestsInCategory(String categoryId) {
         MailchimpAPI mailchimp = new MailchimpAPI();
-        HttpResponse resp = mailchimp.get(mailchimp.interestCategoriesEndpoint() + '/' + categoryId + '/interests');
+        HttpResponse resp = mailchimp.fetchInterests(categoryId);
         if (resp.getStatusCode() != 200) {
-            JSONParser parser = JSON.createParser(resp.getBody());
-            MailchimpErrorResponse error =
-                (MailchimpErrorResponse)parser.readValueAsStrict(MailchimpErrorResponse.class);
-            System.debug(LoggingLevel.ERROR, error);
-            return interests;
+            Mailchimp_Sync_Error__c err = this.reportError(STAGE_FETCH_INTERESTS, resp.getBody());
+            insert err;
+            return null;
         }
 
         JSONParser parser = JSON.createParser(resp.getBody());
-        if (parser.nextToken() != JSONToken.START_OBJECT) {
-            System.debug('Can\'t parse response beginning with ' + parser.getCurrentToken());
-            return interests;
+        try {
+            MailchimpAPI.InterestsResponse interestsResp =
+                (MailchimpAPI.InterestsResponse)parser.readValueAs(MailchimpAPI.InterestsResponse.class);
+            return interestsResp.interests;
+        } catch (JSONException e) {
+            System.debug(LoggingLevel.ERROR, e);
+            Mailchimp_Sync_Error__c requestError = new Mailchimp_Sync_Error__c(
+                Stage__c=STAGE_FETCH_INTERESTS,
+                Title__c=e.getTypeName() + ' while parsing Mailchimp interests response',
+                Detail__c=e.getMessage()
+            );
+            insert requestError;
+            return null;
         }
-        while (parser.nextValue() != null) {
-            switch on parser.getCurrentName() {
-                when 'interests' {
-                    while (parser.nextToken() != JSONToken.END_ARRAY) {
-                        MailchimpAPI.Interest interest =
-                            (MailchimpAPI.Interest)parser.readValueAs(MailchimpAPI.Interest.class);
-                        interests.add(interest);
-                    }
-                }
-                when else {
-                    if (parser.getCurrentToken() == JSONToken.START_OBJECT ||
-                        parser.getCurrentToken() == JSONToken.START_ARRAY) {
-                        parser.skipChildren();
-                    }
-                }
-            }
-        }
-
-        return interests;
     }
 
     private void upsertInterests(MailchimpAPI.InterestCategory[] categories) {
+        Mailchimp_Sync_Error__c[] errors = new List<Mailchimp_Sync_Error__c>();
+
         for (MailchimpAPI.InterestCategory c : categories) {
             InterestCategory__c category = new InterestCategory__c(
                 CategoryID__c=c.id,
@@ -440,7 +427,20 @@ public with sharing class MailchimpSyncManager {
                 Type__c=c.type,
                 DisplayOrder__c=c.display_order
             );
-            Database.upsert(category, InterestCategory__c.Fields.CategoryID__c);
+            Database.UpsertResult catResult =
+                Database.upsert(category, InterestCategory__c.Fields.CategoryID__c);
+            if (!catResult.isSuccess()) {
+                System.debug('Error(s) creating/updating interest category.');
+                for (Database.Error err : catResult.getErrors()) {
+                    System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                    errors.add(new Mailchimp_Sync_Error__c(
+                        Stage__c=STAGE_FETCH_INTERESTS,
+                        Title__c='Error while creating/updating interest category ' + c.title,
+                        Detail__c=err.getStatusCode() + ': ' + err.getMessage()
+                    ));
+                }
+                continue;
+            }
 
             Interest__c[] interests = new List<Interest__c>();
             for (MailchimpAPI.Interest i : c.interests) {
@@ -461,45 +461,48 @@ public with sharing class MailchimpSyncManager {
                 System.debug('Error(s) creating/updating interest.');
                 for (Database.Error err : result.getErrors()) {
                     System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                    errors.add(new Mailchimp_Sync_Error__c(
+                        Stage__c=STAGE_FETCH_INTERESTS,
+                        Title__c='Error while creating/updating interests in category ' + c.title,
+                        Detail__c=err.getStatusCode() + ': ' + err.getMessage()
+                    ));
                 }
             }
         }
+
+        insert errors;
     }
 
     public void pullInterests() {
-        List<MailchimpAPI.InterestCategory> interestCategories = new List<MailchimpAPI.InterestCategory>();
         MailchimpAPI mailchimp = new MailchimpAPI();
-        HttpResponse resp = mailchimp.get(mailchimp.interestCategoriesEndpoint());
+        HttpResponse resp = mailchimp.fetchInterestCategories();
         if (resp.getStatusCode() != 200) {
-            JSONParser parser = JSON.createParser(resp.getBody());
-            MailchimpErrorResponse error =
-                (MailchimpErrorResponse)parser.readValueAsStrict(MailchimpErrorResponse.class);
-            System.debug(LoggingLevel.ERROR, error);
+            Mailchimp_Sync_Error__c err =
+                this.reportError(STAGE_FETCH_INTERESTS, resp.getBody());
+            insert err;
             return;
         }
 
         JSONParser parser = JSON.createParser(resp.getBody());
-        if (parser.nextToken() != JSONToken.START_OBJECT) {
-            System.debug('Can\'t parse response beginning with ' + parser.getCurrentToken());
-            return;
-        }
-        while (parser.nextValue() != null) {
-            switch on parser.getCurrentName() {
-                when 'categories' {
-                    while (parser.nextToken() != JSONToken.END_ARRAY) {
-                        MailchimpAPI.InterestCategory category =
-                            (MailchimpAPI.InterestCategory)parser.readValueAs(MailchimpAPI.InterestCategory.class);
-                        category.interests = this.pullInterestsInCategory(category.id);
-                        interestCategories.add(category);
-                    }
-                }
-                when else {
-                    if (parser.getCurrentToken() == JSONToken.START_OBJECT ||
-                        parser.getCurrentToken() == JSONToken.START_ARRAY) {
-                        parser.skipChildren();
-                    }
-                }
+        MailchimpAPI.InterestCategory[] interestCategories =
+            new List<MailchimpAPI.InterestCategory>();
+        try {
+            MailchimpAPI.InterestCategoriesResponse categoriesResp =
+                (MailchimpAPI.InterestCategoriesResponse)parser.readValueAs(MailchimpAPI.InterestCategoriesResponse.class);
+
+            for (MailchimpAPI.InterestCategory category : categoriesResp.categories) {
+                category.interests = this.pullInterestsInCategory(category.id);
+                interestCategories.add(category);
             }
+        } catch (JSONException e) {
+            System.debug(LoggingLevel.ERROR, e);
+            Mailchimp_Sync_Error__c requestError = new Mailchimp_Sync_Error__c(
+                Stage__c=STAGE_FETCH_INTERESTS,
+                Title__c=e.getTypeName() + ' while parsing Mailchimp interest categories response',
+                Detail__c=e.getMessage()
+            );
+            insert requestError;
+            return;
         }
 
         this.upsertInterests(interestCategories);

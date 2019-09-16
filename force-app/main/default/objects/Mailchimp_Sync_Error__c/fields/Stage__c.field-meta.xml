@@ -12,29 +12,39 @@
         <valueSetDefinition>
             <sorted>false</sorted>
             <value>
-                <fullName>1 - Fetch contacts from Mailchimp</fullName>
+                <fullName>1 - Fetch interests from Mailchimp</fullName>
                 <default>false</default>
-                <label>1 - Fetch contacts from Mailchimp</label>
+                <label>1 - Fetch interests from Mailchimp</label>
             </value>
             <value>
-                <fullName>2 - Add/update contacts in Mailchimp</fullName>
+                <fullName>2 - Fetch contacts from Mailchimp</fullName>
                 <default>false</default>
-                <label>2 - Add/update contacts in Mailchimp</label>
+                <label>2 - Fetch contacts from Mailchimp</label>
             </value>
             <value>
-                <fullName>3 - Add/update tags in Mailchimp</fullName>
+                <fullName>3 - Update Mailchimp list subscriptions</fullName>
                 <default>false</default>
-                <label>3 - Add/update tags in Mailchimp</label>
+                <label>3 - Update Mailchimp list subscriptions</label>
             </value>
             <value>
-                <fullName>4 - Mark Salesforce contacts as synced</fullName>
+                <fullName>4 - Add/update contacts in Mailchimp</fullName>
                 <default>false</default>
-                <label>4 - Mark Salesforce contacts as synced</label>
+                <label>4 - Add/update contacts in Mailchimp</label>
             </value>
             <value>
-                <fullName>5 - Check Mailchimp batch job status</fullName>
+                <fullName>5 - Add/update tags in Mailchimp</fullName>
                 <default>false</default>
-                <label>5 - Check Mailchimp batch job status</label>
+                <label>5 - Add/update tags in Mailchimp</label>
+            </value>
+            <value>
+                <fullName>6 - Mark Salesforce contacts as synced</fullName>
+                <default>false</default>
+                <label>6 - Mark Salesforce contacts as synced</label>
+            </value>
+            <value>
+                <fullName>7 - Check Mailchimp batch job status</fullName>
+                <default>false</default>
+                <label>7 - Check Mailchimp batch job status</label>
             </value>
         </valueSetDefinition>
     </valueSet>

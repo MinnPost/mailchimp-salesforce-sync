@@ -45,11 +45,21 @@ public class MailchimpAPI {
         }
     }
 
+    public class InterestsResponse {
+        public Interest[] interests;
+        public Integer total_items;
+    }
+
     public class Interest {
         public String id;
         public String name;
         public Long subscriber_count;
         public Integer display_order;
+    }
+
+    public class InterestCategoriesResponse {
+        public InterestCategory[] categories;
+        public Integer total_items;
     }
 
     public class InterestCategory {
@@ -220,6 +230,14 @@ public class MailchimpAPI {
         // This call will return pretty much immediately, since the batch
         // operations are queued up to happen asynchronously.
         return this.post('batches', body.getAsString());
+    }
+
+    public HttpResponse fetchInterestCategories() {
+        return this.get(this.interestCategoriesEndpoint());
+    }
+
+    public HttpResponse fetchInterests(String categoryId) {
+        return this.get(this.interestCategoriesEndpoint() + '/' + categoryId + '/interests');
     }
 
     public HttpResponse fetchMembers(Integer count, Integer offset) {
