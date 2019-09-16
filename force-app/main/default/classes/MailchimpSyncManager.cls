@@ -500,6 +500,22 @@ public with sharing class MailchimpSyncManager {
         this.upsertInterests(interestCategories);
     }
 
+    public Contact[] collectContacts(MailchimpAPI.Subscriber[] members) {
+        Contact[] contacts = new List<Contact>();
+
+        for (MailchimpAPI.Subscriber member : members) {
+            Contact c = new Contact(
+                Email=member.email_address,
+                MailchimpEmailHash__c=member.ID,
+                MailchimpMemberRating__c=member.member_rating,
+                MailchimpLastChanged__c=member.last_changed
+            );
+            contacts.add(c);
+        }
+
+        return contacts;
+    }
+
     private Boolean shouldRetry(Database.UpsertResult result) {
         if (result.isSuccess() || !result.isCreated()) return false;
 
@@ -581,22 +597,6 @@ public with sharing class MailchimpSyncManager {
         }
 
         return contactErrors;
-    }
-
-    public Contact[] collectContacts(MailchimpAPI.Subscriber[] members) {
-        Contact[] contacts = new List<Contact>();
-
-        for (MailchimpAPI.Subscriber member : members) {
-            Contact c = new Contact(
-                Email=member.email_address,
-                MailchimpEmailHash__c=member.ID,
-                MailchimpMemberRating__c=member.member_rating,
-                MailchimpLastChanged__c=member.last_changed
-            );
-            contacts.add(c);
-        }
-
-        return contacts;
     }
 
     public MailchimpSubscription__c[] collectSubscriptions(
