@@ -8,8 +8,11 @@ private class MailchimpSyncManagerTest {
 
             String endpoint = req.getEndpoint().substringAfter('/');
             System.debug(req.getMethod() + ' ' + endpoint);
-            if (endpoint.startsWith('batches')) {
+            if (req.getMethod() == 'POST' && endpoint == 'batches') {
                 resp.setBody('{"id":"rA45kKQWre","status":"pending","total_operations":1,"submitted_at":"2019-09-17T10:55:09Z"}');
+            }
+            else if (endpoint.startsWith('batches')) {
+                resp.setBody('{"id":"rA45kKQWre","status":"finished","total_operations":1,"finished_operations":1,"errored_operations":0,"submitted_at":"2019-09-17T10:55:09Z","completed_at":"2019-09-19T10:56:10Z"}');
             }
             else {
                 resp.setBody('{}');
@@ -21,13 +24,31 @@ private class MailchimpSyncManagerTest {
 
     @TestSetup
     static void setup() {
+        Mailchimp_Batch_Operation__c batch = new Mailchimp_Batch_Operation__c(
+            Name='rA45kKQWre',
+            Status__c='pending',
+            Submitted_At__c=Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 50)
+        );
+        insert batch;
+        Mailchimp_Batch_Operation__c finishedBatch = new Mailchimp_Batch_Operation__c(
+            Name='MfpxUuhLKC',
+            Status__c='finished',
+            Submitted_At__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 50),
+            Completed_At__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 10, 50),
+            Total_Operations__c=1,
+            Errored_Operations__c=0,
+            Finished_Operations__c=1,
+            Response_Body_URL__c='https://s3.amazonaws.com/example/batch.tgz'
+        );
+        insert finishedBatch;
+
         Contact[] testContacts = new List<Contact>{
             // Should be synced
             new Contact(
                 FirstName='Joe',
                 LastName='Schmoe',
                 Email='joe.schmoe@example.com',
-                MailchimpLastChanged__c=Datetime.newInstance(2019, 9, 17, 10, 2, 55)
+                MailchimpLastChanged__c=Datetime.newInstanceGmt(2019, 9, 17, 10, 2, 55)
             ),
             // Not in Mailchimp, should not be synced
             new Contact(
@@ -41,24 +62,24 @@ private class MailchimpSyncManagerTest {
                 FirstName='Abdi',
                 LastName='Mohammed',
                 Email='mohabdi@example.com',
-                MailchimpLastChanged__c=Datetime.newInstance(2019, 9, 10, 9, 9, 9),
-                MailchimpLastSyncedAt__c=Datetime.newInstance(2019, 9, 11, 10, 10, 10)
+                MailchimpLastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
+                MailchimpLastSyncedAt__c=Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 10)
             ),
             // Pulled but not pushed back yet
             new Contact(
                 FirstName='Helen',
                 LastName='Troius',
                 Email='helen1604@example.com',
-                MailchimpLastChanged__c=Datetime.newInstance(2019, 9, 12, 5, 5, 5),
-                MailchimpLastSyncedAt__c=Datetime.newInstance(2019, 9, 11, 10, 10, 10)
+                MailchimpLastChanged__c=Datetime.newInstanceGmt(2019, 9, 12, 5, 5, 5),
+                MailchimpLastSyncedAt__c=Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 10)
             ),
             // Synced but tag operation still in progress
             new Contact(
                 FirstName='Fujiwara',
                 LastName='Morimoto',
                 Email='mfuji@example.co.jp',
-                MailchimpLastChanged__c=Datetime.newInstance(2019, 9, 10, 9, 9, 9),
-                MailchimpLastSyncedAt__c=Datetime.newInstance(2019, 9, 11, 10, 10, 10),
+                MailchimpLastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
+                MailchimpLastSyncedAt__c=Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 10),
                 MailchimpBatchID__c='psBNCYMK33'
             )
         };
@@ -95,6 +116,46 @@ private class MailchimpSyncManagerTest {
         System.assertEquals(3, count);
 
         Test.stopTest();
+    }
+
+    @isTest static void testUnfinishedBatches() {
+        Test.startTest();
+
+        MailchimpSyncManager subject = new MailchimpSyncManager();
+        Mailchimp_Batch_Operation__c[] batches = subject.unfinishedBatches();
+        System.assertEquals(1, batches.size());
+        System.assertEquals('rA45kKQWre', batches[0].Name);
+
+        Test.stopTest();
+    }
+
+    @isTest static void testLastSyncCompletedAt() {
+        Test.startTest();
+
+        MailchimpSyncManager subject = new MailchimpSyncManager();
+        System.assertEquals(
+            Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 10),
+            subject.lastSyncCompletedAt()
+        );
+
+        Test.stopTest();
+    }
+
+    @isTest static void testUpdateBatches() {
+        Test.setMock(HttpCalloutMock.class, new MailchimpApiMock());
+        Test.startTest();
+
+        MailchimpSyncManager subject = new MailchimpSyncManager();
+        subject.updateBatches();
+        Mailchimp_Batch_Operation__c batch =
+            [SELECT Name, Status__c, Completed_At__c, Total_Operations__c
+             FROM Mailchimp_Batch_Operation__c
+             WHERE Name = 'rA45kKQWre' LIMIT 1];
+        System.assertEquals('finished', batch.Status__c);
+        System.assertEquals(
+            Datetime.newInstanceGmt(2019, 9, 19, 10, 56, 10),
+            batch.Completed_At__c
+        );
     }
 
     @isTest static void testPushAll() {
