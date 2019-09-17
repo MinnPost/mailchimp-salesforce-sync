@@ -222,7 +222,7 @@ public with sharing class MailchimpSyncManager {
             batch.Name = response.id;
             batch.Status__c = response.status;
             batch.Submitted_At__c = response.submitted_at;
-            if (response.completed_at != '') {
+            if (response.completed_at != null && response.completed_at != '') {
                 Datetime completedAt = (Datetime)JSON.deserialize('"' + response.completed_at + '"', Datetime.class);
                 batch.Completed_At__c = completedAt;
             }

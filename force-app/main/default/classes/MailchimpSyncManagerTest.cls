@@ -5,7 +5,15 @@ private class MailchimpSyncManagerTest {
             HttpResponse resp = new HttpResponse();
             resp.setStatusCode(200);
             resp.setHeader('Content-Type', 'application/json');
-            resp.setBody('{}');
+
+            String endpoint = req.getEndpoint().substringAfter('/');
+            System.debug(req.getMethod() + ' ' + endpoint);
+            if (endpoint.startsWith('batches')) {
+                resp.setBody('{"id":"rA45kKQWre","status":"pending","total_operations":1,"submitted_at":"2019-09-17T10:55:09Z"}');
+            }
+            else {
+                resp.setBody('{}');
+            }
 
             return resp;
         }
