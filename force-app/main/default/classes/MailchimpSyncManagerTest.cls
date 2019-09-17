@@ -50,6 +50,16 @@ private class MailchimpSyncManagerTest {
         Test.stopTest();
     }
 
+    @isTest static void testContactsCount() {
+        Test.startTest();
+
+        MailchimpSyncManager subject = new MailchimpSyncManager();
+        Integer count = subject.contactsCount();
+        System.assertEquals(1, count);
+
+        Test.stopTest();
+    }
+
     @isTest static void testPushAll() {
         Test.setMock(HttpCalloutMock.class, new MailchimpApiMock());
         Test.startTest();
