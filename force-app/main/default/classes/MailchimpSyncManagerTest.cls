@@ -21,17 +21,15 @@ private class MailchimpSyncManagerTest {
 
     @TestSetup
     static void setup() {
-        Id household = [SELECT Id FROM RecordType WHERE sObjectType = 'Account' AND DeveloperName = 'HH_Account' LIMIT 1].Id;
-        Account a = new Account(Name='Schmoe Household', RecordTypeId=household);
-        insert a;
-        Contact c = new Contact(
-            AccountId=a.Id,
-            FirstName='Joe',
-            LastName='Schmoe',
-            Email='joe.schmoe@example.com',
-            MailchimpLastChanged__c=Datetime.newInstance(2019, 9, 17, 10, 2, 55)
-        );
-        insert c;
+        Contact[] testContacts = new List<Contact>{
+            new Contact(
+                FirstName='Joe',
+                LastName='Schmoe',
+                Email='joe.schmoe@example.com',
+                MailchimpLastChanged__c=Datetime.newInstance(2019, 9, 17, 10, 2, 55)
+            )
+        };
+        insert testContacts;
     }
 
     @isTest static void testContactsToSync() {

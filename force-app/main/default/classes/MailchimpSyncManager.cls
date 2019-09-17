@@ -93,16 +93,9 @@ public with sharing class MailchimpSyncManager {
     }
 
     public String contactsCountQuery() {
-        return this.contactsCountQuery(null);
-    }
-
-    public String contactsCountQuery(Integer lim) {
         String query = 'SELECT COUNT() FROM Contact' +
             ' WHERE (Email != null AND MailchimpNeedsSync__c = TRUE)' +
             ' OR MailchimpBatchID__c != null';
-        if (lim != null) {
-            query += ' LIMIT ' + lim;
-        }
         return query;
     }
 
