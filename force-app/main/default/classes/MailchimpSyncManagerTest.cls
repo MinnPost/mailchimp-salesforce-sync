@@ -22,11 +22,44 @@ private class MailchimpSyncManagerTest {
     @TestSetup
     static void setup() {
         Contact[] testContacts = new List<Contact>{
+            // Should be synced
             new Contact(
                 FirstName='Joe',
                 LastName='Schmoe',
                 Email='joe.schmoe@example.com',
                 MailchimpLastChanged__c=Datetime.newInstance(2019, 9, 17, 10, 2, 55)
+            ),
+            // Not in Mailchimp, should not be synced
+            new Contact(
+                FirstName='Julie',
+                LastName='Schmoo',
+                Email='jschmoo@example.com',
+                MailchimpLastChanged__c=null
+            ),
+            // Already synced, should not be synced again
+            new Contact(
+                FirstName='Abdi',
+                LastName='Mohammed',
+                Email='mohabdi@example.com',
+                MailchimpLastChanged__c=Datetime.newInstance(2019, 9, 10, 9, 9, 9),
+                MailchimpLastSyncedAt__c=Datetime.newInstance(2019, 9, 11, 10, 10, 10)
+            ),
+            // Pulled but not pushed back yet
+            new Contact(
+                FirstName='Helen',
+                LastName='Troius',
+                Email='helen1604@example.com',
+                MailchimpLastChanged__c=Datetime.newInstance(2019, 9, 12, 5, 5, 5),
+                MailchimpLastSyncedAt__c=Datetime.newInstance(2019, 9, 11, 10, 10, 10)
+            ),
+            // Synced but tag operation still in progress
+            new Contact(
+                FirstName='Fujiwara',
+                LastName='Morimoto',
+                Email='mfuji@example.co.jp',
+                MailchimpLastChanged__c=Datetime.newInstance(2019, 9, 10, 9, 9, 9),
+                MailchimpLastSyncedAt__c=Datetime.newInstance(2019, 9, 11, 10, 10, 10),
+                MailchimpBatchID__c='psBNCYMK33'
             )
         };
         insert testContacts;
@@ -36,13 +69,19 @@ private class MailchimpSyncManagerTest {
         Test.startTest();
 
         MailchimpSyncManager subject = new MailchimpSyncManager();
-        Contact[] contacts = subject.contactsToSync(1);
-        System.assertEquals(1, contacts.size());
-        System.assertEquals('Joe', contacts[0].FirstName);
-        System.assertEquals('Schmoe', contacts[0].LastName);
+        Contact[] contacts = subject.contactsToSync(400);
+        System.assertEquals(2, contacts.size());
+        System.assertEquals('Helen', contacts[0].FirstName);
+        System.assertEquals('Troius', contacts[0].LastName);
         System.assertEquals(
             'Household Account',
             contacts[0].Account.SF_Record_Type__c
+        );
+        System.assertEquals('Joe', contacts[1].FirstName);
+        System.assertEquals('Schmoe', contacts[1].LastName);
+        System.assertEquals(
+            'Household Account',
+            contacts[1].Account.SF_Record_Type__c
         );
 
         Test.stopTest();
@@ -53,7 +92,7 @@ private class MailchimpSyncManagerTest {
 
         MailchimpSyncManager subject = new MailchimpSyncManager();
         Integer count = subject.contactsCount();
-        System.assertEquals(1, count);
+        System.assertEquals(3, count);
 
         Test.stopTest();
     }
