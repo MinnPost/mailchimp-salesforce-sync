@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Never_member__c</fullName>
-    <externalId>false</externalId>
-    <formula>Account.Never_member__c</formula>
-    <label>Never member?</label>
-    <trackHistory>false</trackHistory>
-    <type>Checkbox</type>
-</CustomField>
