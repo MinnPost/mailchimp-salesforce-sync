@@ -72,17 +72,41 @@ public with sharing class MailchimpSyncManager {
         }
     }
 
+    public MailchimpFieldMapping__mdt[] fieldMappings { get; private set; }
+
+    public MailchimpSyncManager() {
+        this.fieldMappings =
+            [SELECT Id, Direction__c, Salesforce_Object_API_Name__c,
+                    Salesforce_Field_API_Name__c, Push_To_Mailchimp_As__c,
+                    Mailchimp_Merge_Field_Tag__c, Mailchimp_Member_Attribute__c
+             FROM MailchimpFieldMapping__mdt];
+    }
+
+    public MailchimpSyncManager(MailchimpFieldMapping__mdt[] fieldMappings) {
+        this.fieldMappings = fieldMappings;
+    }
+
+    private String[] contactFieldsForPush() {
+        String[] fields = new List<String>();
+        String[] directions = new List<String>{ 'push', 'sync' };
+        for (MailchimpFieldMapping__mdt mapping : this.fieldMappings) {
+            if (!directions.contains(mapping.Direction__c)) continue;
+
+            if (mapping.Salesforce_Object_API_Name__c == 'Contact') {
+                fields.add(mapping.Salesforce_Field_API_Name__c);
+                continue;
+            }
+
+            fields.add(mapping.Salesforce_Object_API_Name__c + '.' +
+                mapping.Salesforce_Field_API_Name__c);
+        }
+
+        return fields;
+    }
+
     public String contactsQuery(Integer lim) {
-        String query = 'SELECT ID, Email, FirstName, LastName, Drupal_ID__c, Drupal_Username__c,' +
-            ' Account.ID, Account.SF_Record_Type__c,' +
-            ' Account.Membership_Level_Number__c, Account.Membership_Level__c,' +
-            ' Account.Membership_level_qualification_amount__c, Account.Membership_Expiration_Date__c,' +
-            ' Account.Recurring_donations_Annualized_value_new__c,' +
-            ' Account.CY_contribution_revenue__c, Account.CY_1_contribution_revenue__c,' +
-            ' Account.CY_2_contribution_revenue__c, Account.CY_3_contribution_revenue__c,' +
-            ' Active_sustainer_account__c, Is_partner_offer_eligible__c,' +
-            ' Current_member__c, Lapsed_member__c, Never_member__c,' +
-            ' MinnPost_com_user_account__c' +
+        String query = 'SELECT ' +
+            String.join(this.contactFieldsForPush(), ',') +
             ' FROM Contact' +
             ' WHERE Email != null AND MailchimpNeedsSync__c = TRUE' +
             ' ORDER BY Email ASC';

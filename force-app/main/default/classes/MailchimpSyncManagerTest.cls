@@ -87,7 +87,207 @@ private class MailchimpSyncManagerTest {
     }
 
     static MailchimpSyncManager subject() {
-        return new MailchimpSyncManager();
+        MailchimpFieldMapping__mdt[] fieldMappings = new List<MailchimpFieldMapping__mdt>{
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.Id',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='Id',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='SF_CONTACT'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.Email',
+                Direction__c='sync',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='Email',
+                Mailchimp_Member_Attribute__c='email_address'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.FirstName',
+                Direction__c='sync',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='FirstName',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='FNAME'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.LastName',
+                Direction__c='sync',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='LastName',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='LNAME'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.Drupal_ID',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='Drupal_ID__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='CMS_UID'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.Drupal_Username',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='Drupal_Username__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='CMS_USER'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.MailchimpEmailHash',
+                Direction__c='sync',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='MailchimpEmailHash__c',
+                Mailchimp_Member_Attribute__c='id'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.MailchimpMemberRating',
+                Direction__c='pull',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='MailchimpMemberRating__c',
+                Mailchimp_Member_Attribute__c='member_rating'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.CY_contribution_revenue',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='CY_contribution_revenue__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='CY_CONTRIB'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.CY_1_contribution_revenue',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='CY_1_contribution_revenue__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='CY_1_CONT'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.CY_2_contribution_revenue',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='CY_2_contribution_revenue__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='CY_2_CONT'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.CY_3_contribution_revenue',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='CY_3_contribution_revenue__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='CY_3_CONT'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.Id',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='Id',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='SF_ACCOUNT'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.Membership_Expiration_Date',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='Membership_Expiration_Date__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='MEMBER_EXP'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.Membership_Level',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='Membership_Level__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='MEMBER_LEV'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.Membership_Level_Number',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='Membership_Level_Number__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='MEMLEV_NUM'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.Membership_level_qualification_a',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='Membership_level_qualification_amount__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='MEMLEV_AMT'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.Recurring_donations_Annualized_v',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='Recurring_donations_Annualized_value_new__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='RECURR_AMT'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Account.SF_Record_Type',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Account',
+                Salesforce_Field_API_Name__c='SF_Record_Type__c',
+                Push_To_Mailchimp_As__c='*|MERGE|* Field',
+                Mailchimp_Merge_Field_Tag__c='SFACCTTYPE'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.Active_sustainer_account',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='Active_sustainer_account__c',
+                Push_To_Mailchimp_As__c='Tag',
+                Mailchimp_Merge_Field_Tag__c='Active sustainer'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.MinnPost_com_user_account',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='MinnPost_com_user_account__c',
+                Push_To_Mailchimp_As__c='Tag',
+                Mailchimp_Merge_Field_Tag__c='CMS user'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.Current_member',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='Current_member__c',
+                Push_To_Mailchimp_As__c='Tag',
+                Mailchimp_Merge_Field_Tag__c='Current member'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.Lapsed_member',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='Lapsed_member__c',
+                Push_To_Mailchimp_As__c='Tag',
+                Mailchimp_Merge_Field_Tag__c='Lapsed member'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.Never_member',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='Never_member__c',
+                Push_To_Mailchimp_As__c='Tag',
+                Mailchimp_Merge_Field_Tag__c='Never member'
+            ),
+            new MailchimpFieldMapping__mdt(
+                MasterLabel='Contact.Is_partner_offer_eligible',
+                Direction__c='push',
+                Salesforce_Object_API_Name__c='Contact',
+                Salesforce_Field_API_Name__c='Is_partner_offer_eligible__c',
+                Push_To_Mailchimp_As__c='Tag',
+                Mailchimp_Merge_Field_Tag__c='Partner offer eligible'
+            )
+        };
+
+        return new MailchimpSyncManager(fieldMappings);
     }
 
     @isTest static void testContactsToSync() {
