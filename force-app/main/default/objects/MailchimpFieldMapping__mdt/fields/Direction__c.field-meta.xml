@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Direction__c</fullName>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Direction</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>push</fullName>
+                <default>true</default>
+                <label>Salesforce → Mailchimp</label>
+            </value>
+            <value>
+                <fullName>pull</fullName>
+                <default>false</default>
+                <label>Mailchimp → Salesforce</label>
+            </value>
+            <value>
+                <fullName>sync</fullName>
+                <default>false</default>
+                <label>Use for sync</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
