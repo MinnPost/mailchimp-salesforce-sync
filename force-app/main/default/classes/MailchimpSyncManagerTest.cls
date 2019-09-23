@@ -86,11 +86,14 @@ private class MailchimpSyncManagerTest {
         insert testContacts;
     }
 
+    static MailchimpSyncManager subject() {
+        return new MailchimpSyncManager();
+    }
+
     @isTest static void testContactsToSync() {
         Test.startTest();
 
-        MailchimpSyncManager subject = new MailchimpSyncManager();
-        Contact[] contacts = subject.contactsToSync(400);
+        Contact[] contacts = subject().contactsToSync(400);
         System.assertEquals(2, contacts.size());
         System.assertEquals('Helen', contacts[0].FirstName);
         System.assertEquals('Troius', contacts[0].LastName);
@@ -111,8 +114,7 @@ private class MailchimpSyncManagerTest {
     @isTest static void testContactsCount() {
         Test.startTest();
 
-        MailchimpSyncManager subject = new MailchimpSyncManager();
-        Integer count = subject.contactsCount();
+        Integer count = subject().contactsCount();
         System.assertEquals(3, count);
 
         Test.stopTest();
@@ -121,8 +123,7 @@ private class MailchimpSyncManagerTest {
     @isTest static void testUnfinishedBatches() {
         Test.startTest();
 
-        MailchimpSyncManager subject = new MailchimpSyncManager();
-        Mailchimp_Batch_Operation__c[] batches = subject.unfinishedBatches();
+        Mailchimp_Batch_Operation__c[] batches = subject().unfinishedBatches();
         System.assertEquals(1, batches.size());
         System.assertEquals('rA45kKQWre', batches[0].Name);
 
@@ -132,10 +133,9 @@ private class MailchimpSyncManagerTest {
     @isTest static void testLastSyncCompletedAt() {
         Test.startTest();
 
-        MailchimpSyncManager subject = new MailchimpSyncManager();
         System.assertEquals(
             Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 10),
-            subject.lastSyncCompletedAt()
+            subject().lastSyncCompletedAt()
         );
 
         Test.stopTest();
@@ -145,8 +145,7 @@ private class MailchimpSyncManagerTest {
         Test.setMock(HttpCalloutMock.class, new MailchimpApiMock());
         Test.startTest();
 
-        MailchimpSyncManager subject = new MailchimpSyncManager();
-        subject.updateBatches();
+        subject().updateBatches();
         Mailchimp_Batch_Operation__c batch =
             [SELECT Name, Status__c, Completed_At__c, Total_Operations__c
              FROM Mailchimp_Batch_Operation__c
@@ -161,22 +160,9 @@ private class MailchimpSyncManagerTest {
     @isTest static void testPushAll() {
         Test.setMock(HttpCalloutMock.class, new MailchimpApiMock());
         Test.startTest();
-        Contact testContact = [SELECT Id, Email, FirstName, LastName, Drupal_ID__c, Drupal_Username__c,
-            Account.Id, Account.SF_Record_Type__c,
-            Account.Membership_Level_Number__c, Account.Membership_Level__c,
-            Account.Membership_level_qualification_amount__c, Account.Membership_Expiration_Date__c,
-            Account.Recurring_donations_Annualized_value_new__c,
-            Account.CY_contribution_revenue__c, Account.CY_1_contribution_revenue__c,
-            Account.CY_2_contribution_revenue__c, Account.CY_3_contribution_revenue__c,
-            Active_sustainer_account__c, Is_partner_offer_eligible__c,
-            Current_member__c, Lapsed_member__c, Never_member__c,
-            MinnPost_com_user_account__c, MailchimpNeedsSync__c
-            FROM Contact LIMIT 1];
-        System.assertEquals('Household Account', testContact.Account.SF_Record_Type__c);
-        System.assert(testContact.MailchimpNeedsSync__c);
 
-        List<Contact> contacts = new List<Contact>{ testContact };
-        MailchimpSyncManager mailchimp = new MailchimpSyncManager();
+        MailchimpSyncManager mailchimp = subject();
+        Contact[] contacts = mailchimp.contactsToSync(null);
         MailchimpSyncManager.Result result = mailchimp.pushAll(contacts);
         System.assert(!result.isError());
         System.assert(result.contactErrors.isEmpty());
