@@ -191,8 +191,10 @@ public class MailchimpAPI {
 
     public HttpResponse pushContactFields(List<Contact> contacts) {
         // Sync to Mailchimp using bulk-add endpoint
-        // - what about deletes? Unlikely that a contact would ever be removed from Salesforce
-        // - Need to ensure we don't re-subscribe anyone who's unsubscribed
+        // - what about deletes? Unlikely that a contact would ever be removed
+        //   from Salesforce -- but contacts can be merged
+        // - Need to ensure we don't re-subscribe anyone who's unsubscribed -
+        //   this should be covered by only setting 'status_if_new'
         // - May need to use a batch request to avoid SF callout response size limits
         // - TODO: Need to handle duplicate e-mail addresses
         JSONGenerator body = JSON.createGenerator(false);
@@ -208,8 +210,6 @@ public class MailchimpAPI {
             body.writeStringField('SF_CONTACT', c.Id);
             body.writeStringField('SF_ACCOUNT', c.Account.Id);
             body.writeStringField('SFACCTTYPE', c.Account.SF_Record_Type__c);
-            this.writeContactStringField(body, c, FIELD_FIRST_NAME);
-            this.writeContactStringField(body, c, FIELD_LAST_NAME);
             this.writeContactNumberField(body, c, FIELD_MEMBER_LEVEL_NUMBER);
             this.writeContactStringField(body, c, FIELD_MEMBER_LEVEL);
             this.writeContactNumberField(body, c, FIELD_MEMBER_LEVEL_QUALIFICATION_AMOUNT);
