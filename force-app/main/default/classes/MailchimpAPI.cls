@@ -135,9 +135,12 @@ public class MailchimpAPI {
     }
 
     public String contactTagsEndpoint(Contact c) {
-        Blob input = Blob.valueOf(c.Email.toLowerCase());
-        Blob emailDigest = Crypto.generateDigest('MD5', input);
-        String subscriberHash = EncodingUtil.convertToHex(emailDigest);
+        String subscriberHash = c.MailchimpEmailHash__c;
+        if (subscriberHash == null) {
+            Blob input = Blob.valueOf(c.Email.toLowerCase());
+            Blob emailDigest = Crypto.generateDigest('MD5', input);
+            subscriberHash = EncodingUtil.convertToHex(emailDigest);
+        }
         return this.membersEndpoint() + '/' + subscriberHash + '/tags';
     }
 
