@@ -45,6 +45,29 @@ public class MailchimpAPI {
         public Integer getMemberRating() {
             return this.member_rating;
         }
+
+        public Object get(String attrName) {
+            switch on attrName {
+                when 'id' {
+                    return this.ID;
+                }
+                when 'email_address' {
+                    return this.email_address;
+                }
+                when 'status' {
+                    return this.status;
+                }
+                when 'member_rating' {
+                    return this.member_rating;
+                }
+                when 'last_changed' {
+                    return this.last_changed;
+                }
+                when else {
+                    throw new TypeException('Can\'t get unknown attribute ' + attrName);
+                }
+            }
+        }
     }
 
     public class InterestsResponse {

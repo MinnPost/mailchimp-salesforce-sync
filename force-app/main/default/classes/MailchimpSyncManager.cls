@@ -533,9 +533,16 @@ public with sharing class MailchimpSyncManager {
             Contact c = new Contact(
                 Email=member.email_address,
                 MailchimpEmailHash__c=member.ID,
-                MailchimpMemberRating__c=member.member_rating,
                 MailchimpLastChanged__c=member.last_changed
             );
+            for (MailchimpFieldMapping__mdt fieldMapping : this.fieldMappings) {
+                if (fieldMapping.Direction__c != 'pull') continue;
+
+                c.put(
+                    fieldMapping.Salesforce_Field_API_Name__c,
+                    member.get(fieldMapping.Mailchimp_Member_Attribute__c)
+                );
+            }
             contacts.add(c);
         }
 
@@ -555,6 +562,39 @@ public with sharing class MailchimpSyncManager {
         return false;
     }
 
+    private void addSyncFields(Contact c, MailchimpAPI.Subscriber member) {
+        for (MailchimpFieldMapping__mdt fieldMapping : this.fieldMappings) {
+            if (fieldMapping.Direction__c != 'sync') continue;
+            if (fieldMapping.Salesforce_Object_API_Name__c != 'Contact') {
+                throw new TypeException(
+                    'Sync fields are not (yet) supported on associated records'
+                );
+            }
+
+            String attrName = fieldMapping.Mailchimp_Member_Attribute__c;
+            String mergeTag = fieldMapping.Mailchimp_Merge_Field_Tag__c;
+            String fieldName = fieldMapping.Salesforce_Field_API_Name__c;
+
+            if (attrName != null) {
+                c.put(fieldName, member.get(attrName));
+                continue;
+            }
+
+            if (mergeTag == null) {
+                throw new TypeException(
+                    'Missing both attribute name and merge field tag for ' +
+                    fieldMapping.MasterLabel
+                );
+            }
+
+            String value = member.merge_fields.get(mergeTag);
+            if (value == null || value == '') {
+                value = fieldMapping.Default_Value__c;
+            }
+            c.put(fieldName, value);
+        }
+    }
+
     private Map<String, Mailchimp_Sync_Error__c> upsertContacts(MailchimpAPI.Subscriber[] members, Contact[] contacts) {
         Map<String, Mailchimp_Sync_Error__c> contactErrors = new Map<String, Mailchimp_Sync_Error__c>();
 
@@ -570,17 +610,7 @@ public with sharing class MailchimpSyncManager {
 
             if (upsertResult.isSuccess()) continue;
             if (this.shouldRetry(upsertResult)) {
-                String firstName = member.merge_fields.get('FNAME');
-                if (firstName == null || firstName == '') {
-                    firstName = 'Subscriber';
-                }
-                String lastName = member.merge_fields.get('LNAME');
-                if (lastName == null || lastName == '') {
-                    lastName = 'Subscriber';
-                }
-
-                c.FirstName = firstName;
-                c.LastName = lastName;
+                this.addSyncFields(c, member);
                 contactsToInsert.add(c);
                 continue;
             }
