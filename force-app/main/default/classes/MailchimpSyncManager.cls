@@ -308,7 +308,7 @@ public with sharing class MailchimpSyncManager {
         // I have observed it return a 400 Bad Request with an error response
         // if there are duplicate e-mails in the list.
         MailchimpAPI mailchimp = new MailchimpAPI();
-        HttpResponse pushFieldsResp = mailchimp.pushContactFields(contacts);
+        HttpResponse pushFieldsResp = mailchimp.pushContactFields(contacts, this.fieldMappings);
         if (pushFieldsResp.getStatusCode() != 200) {
             result.requestError = this.reportError(STAGE_BATCH_SUB_UNSUB, pushFieldsResp.getBody());
             insert result.requestError;
@@ -320,7 +320,7 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
 
-        HttpResponse tagsResp = mailchimp.pushContactTags(contacts, result.contactErrors.keySet());
+        HttpResponse tagsResp = mailchimp.pushContactTags(contacts, result.contactErrors.keySet(), this.fieldMappings);
         if (tagsResp.getStatusCode() != 200) {
             result.requestError = this.reportError(STAGE_BATCH_TAG, tagsResp.getBody());
             insert result.requestError;
