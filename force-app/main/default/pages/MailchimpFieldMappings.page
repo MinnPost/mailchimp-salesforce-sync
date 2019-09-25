@@ -1,0 +1,20 @@
+<apex:page title="Mailchimp Field Mappings" controller="MailchimpFieldMappingsController">
+    <apex:form>
+        <apex:pageBlock>
+            <apex:pageBlockButtons>
+                <apex:commandButton id="saveButton" value="Save" action="{!save}" />
+                <apex:commandButton id="cancelButton" value="Cancel" onclick="resetInlineEdit()" />
+            </apex:pageBlockButtons>
+
+            <apex:pageBlockTable value="{!fieldMappings}" var="fm">
+                <apex:column value="{!fm.Salesforce_Object_API_Name__c}" />
+                <apex:column value="{!fm.Salesforce_Field_API_Name__c}" />
+                <apex:column value="{!fm.Direction__c}" />
+                <apex:column value="{!fm.Push_To_Mailchimp_As__c}" />
+                <apex:column value="{!fm.Mailchimp_Merge_Field_Tag__c}" />
+                <apex:column value="{!fm.Mailchimp_Member_Attribute__c}" />
+                <apex:column value="{!fm.Default_Value__c}" />
+            </apex:pageBlockTable>
+        </apex:pageBlock>
+    </apex:form>
+</apex:page>
