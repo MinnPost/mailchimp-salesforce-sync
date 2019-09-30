@@ -99,8 +99,41 @@ public class MailchimpAPI {
         }
     }
 
+    public class MergeField {
+        public Integer merge_id;
+        public String tag;
+        public String name;
+        public String type;
+        public Boolean required;
+        public String default_value;
+    }
+
+    public class MergeFieldsResponse {
+        public MergeField[] merge_fields;
+        public Integer total_items;
+    }
+
+    public class Tag {
+        public Integer id;
+        public String name;
+        public Integer member_count;
+    }
+
+    public class TagsResponse {
+        public Tag[] segments;
+        public Integer total_items;
+    }
+
     public String listEndpoint() {
         return 'lists/3528e74526';
+    }
+
+    public String mergeFieldsEndpoint() {
+        return this.listEndpoint() + '/merge-fields';
+    }
+
+    public String tagsEndpoint() {
+        return this.listEndpoint() + '/segments?type=static';
     }
 
     public String membersEndpoint() {
@@ -270,6 +303,14 @@ public class MailchimpAPI {
         // This call will return pretty much immediately, since the batch
         // operations are queued up to happen asynchronously.
         return this.post('batches', body.getAsString());
+    }
+
+    public HttpResponse fetchMergeFields() {
+        return this.get(this.mergeFieldsEndpoint());
+    }
+
+    public HttpResponse fetchTags() {
+        return this.get(this.tagsEndpoint());
     }
 
     public HttpResponse fetchInterestCategories() {

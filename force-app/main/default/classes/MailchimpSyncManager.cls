@@ -72,14 +72,24 @@ public with sharing class MailchimpSyncManager {
         }
     }
 
-    public MailchimpFieldMapping__mdt[] fieldMappings { get; private set; }
+    public MailchimpFieldMapping__mdt[] fieldMappings {
+        get {
+            if (fieldMappings == null) {
+                fieldMappings =
+                    [SELECT Id, Direction__c, Salesforce_Object_API_Name__c,
+                            Salesforce_Field_API_Name__c,
+                            Push_To_Mailchimp_As__c,
+                            Mailchimp_Merge_Field_Tag__c,
+                            Mailchimp_Member_Attribute__c,
+                            Default_Value__c
+                     FROM MailchimpFieldMapping__mdt];
+            }
+            return fieldMappings;
+        }
+        private set;
+    }
 
     public MailchimpSyncManager() {
-        this.fieldMappings =
-            [SELECT Id, Direction__c, Salesforce_Object_API_Name__c,
-                    Salesforce_Field_API_Name__c, Push_To_Mailchimp_As__c,
-                    Mailchimp_Merge_Field_Tag__c, Mailchimp_Member_Attribute__c
-             FROM MailchimpFieldMapping__mdt];
     }
 
     public MailchimpSyncManager(MailchimpFieldMapping__mdt[] fieldMappings) {

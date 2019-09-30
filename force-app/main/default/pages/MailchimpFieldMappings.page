@@ -1,12 +1,81 @@
-<apex:page title="Mailchimp Field Mappings" controller="MailchimpFieldMappingsController">
-    <apex:form>
-        <apex:pageBlock>
-            <apex:pageBlockButtons>
-                <apex:commandButton id="saveButton" value="Save" action="{!save}" />
-                <apex:commandButton id="cancelButton" value="Cancel" onclick="resetInlineEdit()" />
-            </apex:pageBlockButtons>
+<apex:page docType="html-5.0" title="Mailchimp Field Mappings" controller="MailchimpFieldMappingsController">
+    <apex:pageMessages />
 
+    <apex:includeScript value="{!$Resource.MCFieldMappingUI}" />
+    <apex:includeScript value="//cdnjs.cloudflare.com/ajax/libs/jsforce/1.9.1/jsforce.min.js" />
+
+    <script type="text/javascript">
+        var fieldsByObject = {!fieldsByObjectJSON};
+        var attrFieldTagChoices = {!attrFieldTagChoicesJSON};
+        var attrFieldTagGroupLabels = {
+            mcMemberAttrs: "Member Attributes",
+            mcMergeFields: "*|MERGE|* Fields",
+            mcTags: "Tags"
+        };
+        var jsfConn = new jsforce.Connection({
+            accessToken: '{!$Api.Session_ID}'
+        });
+
+        onLoad(function() {
+            var objSelectID = '{!$Component.theForm.addMappingBlock.objName}';
+            var $objSelect = document.getElementById(objSelectID);
+            var fieldSelectID = '{!$Component.theForm.addMappingBlock.fieldName}';
+            var objChange = updateFieldChoices.bind(
+                $objSelect, // this
+                fieldSelectID, fieldsByObject
+            );
+            objChange();
+            $objSelect.addEventListener('change', objChange);
+
+            var dirSelectID = '{!$Component.theForm.addMappingBlock.direction}';
+            var $dirSelect = document.getElementById(dirSelectID);
+            var mcSelectID = '{!$Component.theForm.addMappingBlock.mcAttrFieldTag}';
+            var dirChange = updateAttrFieldTagChoices.bind(
+                $dirSelect, // this
+                mcSelectID, attrFieldTagGroupLabels, attrFieldTagChoices
+            );
+            dirChange();
+            $dirSelect.addEventListener('change', dirChange);
+        });
+    </script>
+
+    <apex:form id="theForm">
+        <apex:pageBlock title="Add Field Mapping" id="addMappingBlock">
+            <apex:selectList id="objName"
+                    value="{!newMapping.sfObjName}" size="1">
+                <apex:selectOption itemValue="Account" itemLabel="Account" />
+                <apex:selectOption itemValue="Contact" itemLabel="Contact" />
+            </apex:selectList>
+
+            <apex:selectList id="fieldName"
+                    value="{!newMapping.sfFieldName}" size="1">
+                <apex:selectOptions value="{!fieldChoices}" />
+            </apex:selectList>
+
+            <apex:selectList id="direction"
+                    value="{!newMapping.direction}" size="1">
+                <apex:selectOptions value="{!directionChoices}" />
+            </apex:selectList>
+
+            <apex:selectList id="mcAttrFieldTag"
+                    value="{!newMapping.mcAttrFieldTag}" size="1">
+                <apex:selectOptions value="{!attrFieldTagChoices}" />
+            </apex:selectList>
+
+            <apex:inputText id="defaultValue"
+                value="{!newMapping.defaultValue}"
+                html-placeholder="Default value" />
+
+            <apex:commandButton id="saveButton" value="Add Mapping" action="{!createMapping}" />
+        </apex:pageBlock>
+
+        <apex:pageBlock title="Mailchimp Field Mappings">
             <apex:pageBlockTable value="{!fieldMappings}" var="fm">
+                <apex:column>
+                    <apex:commandLink
+                        onclick="return deleteMapping(jsfConn, 'MailchimpFieldMapping.{!fm.DeveloperName}')"
+                    >Del</apex:commandLink>
+                </apex:column>
                 <apex:column value="{!fm.Salesforce_Object_API_Name__c}" />
                 <apex:column value="{!fm.Salesforce_Field_API_Name__c}" />
                 <apex:column value="{!fm.Direction__c}" />
