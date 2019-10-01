@@ -32,7 +32,8 @@
             var mcSelectID = '{!$Component.theForm.addMappingBlock.mcAttrFieldTag}';
             var dirChange = updateAttrFieldTagChoices.bind(
                 $dirSelect, // this
-                mcSelectID, attrFieldTagGroupLabels, attrFieldTagChoices
+                mcSelectID, '.defaultValue',
+                attrFieldTagGroupLabels, attrFieldTagChoices
             );
             dirChange();
             $dirSelect.addEventListener('change', dirChange);
@@ -41,30 +42,54 @@
 
     <apex:form id="theForm">
         <apex:pageBlock title="Add Field Mapping" id="addMappingBlock">
-            <apex:selectList id="objName"
-                    value="{!newMapping.sfObjName}" size="1">
-                <apex:selectOption itemValue="Account" itemLabel="Account" />
-                <apex:selectOption itemValue="Contact" itemLabel="Contact" />
-            </apex:selectList>
+            <table>
+                <thead>
+                    <tr>
+                        <th colspan="2">Salesforce Field</th>
+                        <th>Direction</th>
+                        <th>Mailchimp Field/Tag</th>
+                        <th class="defaultValue">Default Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <apex:selectList id="objName"
+                                    value="{!newMapping.sfObjName}" size="1">
+                                <apex:selectOption itemValue="Account" itemLabel="Account" />
+                                <apex:selectOption itemValue="Contact" itemLabel="Contact" />
+                            </apex:selectList>
+                        </td>
 
-            <apex:selectList id="fieldName"
-                    value="{!newMapping.sfFieldName}" size="1">
-                <apex:selectOptions value="{!fieldChoices}" />
-            </apex:selectList>
+                        <td>
+                            <apex:selectList id="fieldName"
+                                    value="{!newMapping.sfFieldName}" size="1">
+                                <apex:selectOptions value="{!fieldChoices}" />
+                            </apex:selectList>
+                        </td>
 
-            <apex:selectList id="direction"
-                    value="{!newMapping.direction}" size="1">
-                <apex:selectOptions value="{!directionChoices}" />
-            </apex:selectList>
+                        <td>
+                            <apex:selectList id="direction"
+                                    value="{!newMapping.direction}" size="1">
+                                <apex:selectOptions value="{!directionChoices}" />
+                            </apex:selectList>
+                        </td>
 
-            <apex:selectList id="mcAttrFieldTag"
-                    value="{!newMapping.mcAttrFieldTag}" size="1">
-                <apex:selectOptions value="{!attrFieldTagChoices}" />
-            </apex:selectList>
+                        <td>
+                            <apex:selectList id="mcAttrFieldTag"
+                                    value="{!newMapping.mcAttrFieldTag}" size="1">
+                                <apex:selectOptions value="{!attrFieldTagChoices}" />
+                            </apex:selectList>
+                        </td>
 
-            <apex:inputText id="defaultValue"
-                value="{!newMapping.defaultValue}"
-                html-placeholder="Default value" />
+                        <td class="defaultValue">
+                            <apex:inputText id="defaultValue"
+                                value="{!newMapping.defaultValue}"
+                                html-placeholder="Default value" />
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
 
             <apex:commandButton id="saveButton" value="Add Mapping" action="{!createMapping}" />
         </apex:pageBlock>

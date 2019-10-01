@@ -32,8 +32,11 @@ function updateFieldChoices(selectID, fieldsByObject) {
     setChoices(fieldSelect, fieldsByObject[this.value]);
 }
 
-function updateAttrFieldTagChoices(selectID, labels, attrFieldTagChoices) {
+function updateAttrFieldTagChoices(
+    selectID, defaultValueSelector, labels, attrFieldTagChoices
+) {
     var attrFieldTagSelect = document.getElementById(selectID);
+    var defaultValueCol = document.querySelectorAll(defaultValueSelector);
 
     attrFieldTagSelect.innerHTML = '';
     setGroupedChoices(attrFieldTagSelect, labels, attrFieldTagChoices);
@@ -42,6 +45,9 @@ function updateAttrFieldTagChoices(selectID, labels, attrFieldTagChoices) {
         attrFieldTagSelect.querySelector('optgroup#mcMemberAttrs').setAttribute('disabled', '');
         attrFieldTagSelect.querySelector('optgroup#mcMergeFields').removeAttribute('disabled');
         attrFieldTagSelect.querySelector('optgroup#mcTags').removeAttribute('disabled');
+        defaultValueCol.forEach(function(item) {
+            item.style.display = 'none';
+        });
         return;
     }
 
@@ -49,6 +55,9 @@ function updateAttrFieldTagChoices(selectID, labels, attrFieldTagChoices) {
     attrFieldTagSelect.querySelector('optgroup#mcMemberAttrs').removeAttribute('disabled');
     attrFieldTagSelect.querySelector('optgroup#mcMergeFields').removeAttribute('disabled');
     attrFieldTagSelect.querySelector('optgroup#mcTags').setAttribute('disabled', '');
+    defaultValueCol.forEach(function(item) {
+        item.style.display = '';
+    });
 }
 
 function deleteMapping(conn, mappingLabel) {
