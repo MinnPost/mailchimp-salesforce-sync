@@ -76,7 +76,9 @@ public with sharing class MailchimpSyncManager {
         get {
             if (fieldMappings == null) {
                 fieldMappings =
-                    [SELECT Id, Direction__c, Salesforce_Object_API_Name__c,
+                    [SELECT Id, MasterLabel,
+                            Direction__c,
+                            Salesforce_Object_API_Name__c,
                             Salesforce_Field_API_Name__c,
                             Push_To_Mailchimp_As__c,
                             Mailchimp_Merge_Field_Tag__c,

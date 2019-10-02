@@ -199,7 +199,7 @@ public class MailchimpAPI {
             when INTEGER, DOUBLE {
                 body.writeNumberField(mergeTag, (Decimal)value);
             }
-            when DATETIME {
+            when DATE, DATETIME {
                 body.writeDateTimeField(mergeTag, (Datetime)value);
             }
             when else {
