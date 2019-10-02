@@ -111,6 +111,52 @@ public with sharing class MailchimpSyncController {
         private set;
     }
 
+    public String mailchimpAudience {
+        get {
+            if (mailchimpAudience == null) {
+                MailchimpAPI api = new MailchimpAPI();
+                try {
+                    mailchimpAudience = api.fetchList().name;
+                } catch (CalloutException e) {
+                    // swallow it
+                }
+            }
+            return mailchimpAudience;
+        }
+        private set;
+    }
+
+    public String mailchimpListID {
+        get {
+            if (mailchimpListID == null) {
+                MailchimpSettings__c settings = MailchimpSettings__c.getInstance();
+                mailchimpListID = settings.AudienceID__c;
+            }
+            return mailchimpListID;
+        }
+        set;
+    }
+
+    public SelectOption[] mailchimpListOptions {
+        get {
+            if (mailchimpListOptions == null) {
+                mailchimpListOptions = new List<SelectOption>();
+                MailchimpAPI api = new MailchimpAPI();
+                for (MailchimpAPI.ListResponse audience : api.fetchLists().lists) {
+                    mailchimpListOptions.add(
+                        new SelectOption(audience.id, audience.name)
+                    );
+                }
+            }
+            return mailchimpListOptions;
+        }
+        private set;
+    }
+
+    public void updateListID() {
+        MailchimpSettings__c settings = MailchimpSettings__c.getOrgDefaults();
+        settings.AudienceID__c = this.mailchimpListID;
+        upsert settings;
     }
 
     public PageReference updateContacts() {

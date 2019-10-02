@@ -1,11 +1,44 @@
-<apex:page title="Mailchimp Sync" controller="MailchimpSyncController">
+<apex:page docType="html-5.0" title="Mailchimp Sync" controller="MailchimpSyncController">
     <apex:pageMessages showDetail="TRUE" />
-    <apex:form>
-        <apex:pageBlock title="Sync Status">
+    <apex:includeScript value="{!$Resource.MCFieldMappingUI}" />
+
+    <script type="text/javascript">
+        var editListLinkID = '{!$Component.theForm.statusBlock.editListLink}';
+
+        function onClickEditList(event) {
+            event.preventDefault();
+            document.getElementById('mailchimpListStatus').style.display = 'none';
+            document.getElementById('mailchimpListForm').style.display = '';
+        }
+
+        onLoad(function() {
+            document.getElementById(editListLinkID)
+                .addEventListener('click', onClickEditList);
+        });
+    </script>
+
+    <apex:form id="theForm">
+        <apex:pageBlock id="statusBlock" title="Sync Status">
             <apex:pageBlockButtons>
                 <apex:commandButton action="{!updateContacts}" value="Update Mailchimp contacts" />
                 <apex:commandButton action="{!syncAllContacts}" value="Sync all Mailchimp contacts" />
             </apex:pageBlockButtons>
+
+            <p>
+                Syncing with Mailchimp audience:
+                <span id="mailchimpListStatus">
+                    {!mailchimpAudience}
+                    <apex:commandLink id="editListLink" value="Change"
+                        onclick="return false;" />
+                </span>
+                <span id="mailchimpListForm" style="display: none;">
+                    <apex:selectList id="mailchimpListID" value="{!mailchimpListID}">
+                        <apex:selectOptions value="{!mailchimpListOptions}" />
+                    </apex:selectList>
+                    <apex:commandButton id="submitListButton" value="Save"
+                        action="{!updateListID}" />
+                </span>
+            </p>
             <p>Mailchimp API base URL: {!mailchimpBaseURL}</p>
             <p>{!contactsNeedingSync} contacts are in the process of being synced.</p>
             <p>{!lastSyncCompletedAt}</p>

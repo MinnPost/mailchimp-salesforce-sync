@@ -78,6 +78,16 @@ public class MailchimpAPI {
         }
     }
 
+    public class ListsResponse {
+        public ListResponse[] lists;
+        public Integer total_items;
+    }
+
+    public class ListResponse {
+        public String id;
+        public String name;
+    }
+
     public class InterestsResponse {
         public Interest[] interests;
         public Integer total_items;
@@ -133,7 +143,8 @@ public class MailchimpAPI {
     }
 
     public String listEndpoint() {
-        return 'lists/3528e74526';
+        MailchimpSettings__c settings = MailchimpSettings__c.getInstance();
+        return 'lists/' + settings.AudienceID__c;
     }
 
     public String mergeFieldsEndpoint() {
@@ -179,6 +190,30 @@ public class MailchimpAPI {
         req.setTimeout(120000);
 
         return this.connection.send(req);
+    }
+
+    public ListsResponse fetchLists() {
+        HttpResponse resp = this.get('lists');
+        if (resp.getStatusCode() != 200) {
+            throw new CalloutException(
+                'Request failed: ' +
+                resp.getStatusCode() + ' ' + resp.getStatus()
+            );
+        }
+        JSONParser parser = JSON.createParser(resp.getBody());
+        return (ListsResponse)parser.readValueAs(ListsResponse.class);
+    }
+
+    public ListResponse fetchList() {
+        HttpResponse resp = this.get(this.listEndpoint());
+        if (resp.getStatusCode() != 200) {
+            throw new CalloutException(
+                'Request failed: ' +
+                resp.getStatusCode() + ' ' + resp.getStatus()
+            );
+        }
+        JSONParser parser = JSON.createParser(resp.getBody());
+        return (ListResponse)parser.readValueAs(ListResponse.class);
     }
 
     private void writeContactField(JSONGenerator body, Contact c, MailchimpFieldMapping__mdt fieldMapping) {
