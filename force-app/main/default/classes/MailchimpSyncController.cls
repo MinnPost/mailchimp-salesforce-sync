@@ -1,10 +1,98 @@
 public with sharing class MailchimpSyncController {
-    public String contactsNeedingSync { get; private set; }
-    public String lastSyncCompletedAt { get; private set; }
-    public String jobsInProgress { get; private set; }
-    public List<Mailchimp_Sync_Error__c> recentSyncErrors { get; private set; }
-    public List<Mailchimp_Batch_Operation__c> unfinishedBatchOperations { get; private set; }
-    public List<AsyncApexJob> recentJobs { get; private set; }
+    private MailchimpSyncManager mailchimp {
+        get {
+            if (mailchimp == null) {
+                mailchimp = new MailchimpSyncManager();
+            }
+            return mailchimp;
+        }
+        set;
+    }
+
+    public String contactsNeedingSync {
+        get {
+            if (contactsNeedingSync == null) {
+                Integer contactsCount = mailchimp.contactsCount();
+                contactsNeedingSync = contactsCount > 0 ?
+                    String.valueOf(contactsCount) :
+                    'No';
+            }
+            return contactsNeedingSync;
+        }
+        private set;
+    }
+
+    public String lastSyncCompletedAt {
+        get {
+            if (lastSyncCompletedAt == null) {
+                Datetime lastDatetime = mailchimp.lastSyncCompletedAt();
+                lastSyncCompletedAt = lastDatetime == null ?
+                    'No sync has been performed yet.' :
+                    'Last sync finished at ' + lastDatetime.format() + '.';
+            }
+            return lastSyncCompletedAt;
+        }
+        private set;
+    }
+
+    public String jobsInProgress {
+        get {
+            if (jobsInProgress == null) {
+                Integer count = mailchimp.inProgressJobsCount();
+                jobsInProgress = count > 0 ?
+                    String.valueOf(count) :
+                    'No';
+            }
+            return jobsInProgress;
+        }
+        private set;
+    }
+
+    public List<Mailchimp_Sync_Error__c> recentSyncErrors {
+        get {
+            if (recentSyncErrors == null) {
+                recentSyncErrors =
+                    [SELECT Id, Name, CreatedDate, Stage__c, Contact__c,
+                            Title__c, Detail__c
+                     FROM Mailchimp_Sync_Error__c
+                     ORDER BY CreatedDate DESC LIMIT 20];
+            }
+            return recentSyncErrors;
+        }
+        private set;
+    }
+
+    public List<Mailchimp_Batch_Operation__c> unfinishedBatchOperations {
+        get {
+            if (unfinishedBatchOperations == null) {
+                unfinishedBatchOperations = mailchimp.unfinishedBatches(20);
+            }
+            return unfinishedBatchOperations;
+        }
+        private set;
+    }
+
+    public List<AsyncApexJob> recentJobs {
+        get {
+            if (recentJobs == null) {
+                recentJobs =
+                    [SELECT Id, ApexClass.Name, CreatedDate, Status,
+                            ExtendedStatus, NumberOfErrors
+                     FROM AsyncApexJob
+                     WHERE ApexClassID IN (
+                         SELECT Id FROM ApexClass WHERE Name IN (
+                             'MailchimpPullInterestsJob',
+                             'MailchimpPullJob',
+                             'MailchimpPushJob',
+                             'MailchimpSyncJob'
+                         )
+                     )
+                     ORDER BY CreatedDate DESC LIMIT 10];
+            }
+            return recentJobs;
+        }
+        private set;
+    }
 
     public String mailchimpBaseURL {
         get {
@@ -23,32 +111,6 @@ public with sharing class MailchimpSyncController {
         private set;
     }
 
-    public void fetchData() {
-        MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        Integer contactsCount = mailchimp.contactsCount();
-        this.contactsNeedingSync = contactsCount > 0 ?
-                String.valueOf(contactsCount) :
-                'No';
-        Datetime lastSyncCompletedAt = mailchimp.lastSyncCompletedAt();
-        this.lastSyncCompletedAt = lastSyncCompletedAt == null ?
-            'No sync has been performed yet.' :
-            'Last sync finished at ' + lastSyncCompletedAt.format() + '.';
-        this.recentSyncErrors =
-            [SELECT Id, Name, CreatedDate, Stage__c, Contact__c, Title__c, Detail__c
-             FROM Mailchimp_Sync_Error__c
-             ORDER BY CreatedDate DESC LIMIT 20];
-        this.unfinishedBatchOperations = mailchimp.unfinishedBatches(20);
-        this.recentJobs =
-            [SELECT Id, ApexClass.Name, CreatedDate, Status, ExtendedStatus, NumberOfErrors
-             FROM AsyncApexJob
-             WHERE ApexClassID IN (
-                SELECT Id FROM ApexClass WHERE Name IN ('MailchimpPullInterestsJob', 'MailchimpPullJob', 'MailchimpPushJob', 'MailchimpSyncJob')
-             )
-             ORDER BY CreatedDate DESC LIMIT 10];
-        Integer jobsInProgress = mailchimp.inProgressJobsCount();
-        this.jobsInProgress = jobsInProgress > 0 ?
-            String.valueOf(jobsInProgress) :
-            'No';
     }
 
     public PageReference updateContacts() {
