@@ -27,7 +27,15 @@ public class MailchimpAPI {
         'members.interests'
     };
 
-    private Http connection;
+    private Http connection {
+        get {
+            if (connection == null) {
+                connection = new Http();
+            }
+            return connection;
+        }
+        set;
+    }
 
     public class Subscriber {
         public String ID;
@@ -155,10 +163,6 @@ public class MailchimpAPI {
     }
 
     public HttpResponse get(String endpoint) {
-        if (this.connection == null) {
-            this.connection = new Http();
-        }
-
         HttpRequest req = new HttpRequest();
         req.setMethod('GET');
         req.setEndpoint('callout:Mailchimp/' + endpoint);
@@ -168,10 +172,6 @@ public class MailchimpAPI {
     }
 
     public HttpResponse post(String endpoint, String body) {
-        if (this.connection == null) {
-            this.connection = new Http();
-        }
-
         HttpRequest req = new HttpRequest();
         req.setMethod('POST');
         req.setEndpoint('callout:Mailchimp/' + endpoint);
