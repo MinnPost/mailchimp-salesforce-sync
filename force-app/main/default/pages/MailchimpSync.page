@@ -4,6 +4,7 @@
 
     <script type="text/javascript">
         var editListLinkID = '{!$Component.theForm.statusBlock.editListLink}';
+        var cancelEditButtonID = '{!$Component.theForm.statusBlock.cancelEditListButton}';
 
         function onClickEditList(event) {
             event.preventDefault();
@@ -11,9 +12,17 @@
             document.getElementById('mailchimpListForm').style.display = '';
         }
 
+        function onCancelEditList(event) {
+            event.preventDefault();
+            document.getElementById('mailchimpListStatus').style.display = '';
+            document.getElementById('mailchimpListForm').style.display = 'none';
+        }
+
         onLoad(function() {
             document.getElementById(editListLinkID)
                 .addEventListener('click', onClickEditList);
+            document.getElementById(cancelEditButtonID)
+                .addEventListener('click', onCancelEditList);
         });
     </script>
 
@@ -37,6 +46,7 @@
                     </apex:selectList>
                     <apex:commandButton id="submitListButton" value="Save"
                         action="{!updateListID}" />
+                    <apex:commandButton id="cancelEditListButton" value="Cancel" />
                 </span>
             </p>
             <p>Mailchimp API base URL: {!mailchimpBaseURL}</p>
