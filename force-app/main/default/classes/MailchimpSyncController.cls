@@ -6,6 +6,23 @@ public with sharing class MailchimpSyncController {
     public List<Mailchimp_Batch_Operation__c> unfinishedBatchOperations { get; private set; }
     public List<AsyncApexJob> recentJobs { get; private set; }
 
+    public String mailchimpBaseURL {
+        get {
+            if (mailchimpBaseURL == null) {
+                NamedCredential nc =
+                    [SELECT DeveloperName, Endpoint FROM NamedCredential
+                     WHERE DeveloperName = 'Mailchimp' LIMIT 1];
+                if (nc == null) {
+                    mailchimpBaseURL = '(not configured)';
+                } else {
+                    mailchimpBaseURL = nc.Endpoint;
+                }
+            }
+            return mailchimpBaseURL;
+        }
+        private set;
+    }
+
     public void fetchData() {
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
         Integer contactsCount = mailchimp.contactsCount();

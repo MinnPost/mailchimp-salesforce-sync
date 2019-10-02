@@ -6,6 +6,7 @@
                 <apex:commandButton action="{!updateContacts}" value="Update Mailchimp contacts" />
                 <apex:commandButton action="{!syncAllContacts}" value="Sync all Mailchimp contacts" />
             </apex:pageBlockButtons>
+            <p>Mailchimp API base URL: {!mailchimpBaseURL}</p>
             <p>{!contactsNeedingSync} contacts are in the process of being synced.</p>
             <p>{!lastSyncCompletedAt}</p>
             <p>{!jobsInProgress} background job(s) are currently running.</p>
