@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <defaultLandingTab>Mailchimp_Sync</defaultLandingTab>
+    <description>Sync your Mailchimp audience with your Salesforce contacts to build better segmentation and targeted campaigns.</description>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <label>Mailchimp Sync</label>
+    <tabs>Mailchimp_Sync</tabs>
+    <tabs>Mailchimp_Field_Mappings</tabs>
+    <tabs>Mailchimp_Sync_Error__c</tabs>
+    <tabs>InterestCategory__c</tabs>
+    <tabs>standard-Contact</tabs>
+    <tabs>npo02__Household__c</tabs>
+    <tabs>standard-Opportunity</tabs>
+</CustomApplication>
