@@ -1,5 +1,0 @@
-<apex:component controller="MCMemberRatingController">
-	<apex:attribute name="rating" description="Mailchimp member rating as an integer."
-                    type="Integer" assignTo="{!memberRating}" />
-    <apex:outputText value="{!memberRating}" />
-</apex:component>
