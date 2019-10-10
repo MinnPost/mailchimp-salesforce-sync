@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LastPushed__c</fullName>
+    <description>Date/time this contact was last pushed to Mailchimp.</description>
+    <externalId>false</externalId>
+    <label>Last pushed to Mailchimp</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

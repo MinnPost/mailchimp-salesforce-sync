@@ -36,7 +36,7 @@ public with sharing class MailchimpSyncManager {
         public String response_body_url;
     }
 
-    class MembersResponse {
+    public class MembersResponse {
         public Integer total_items;
         public MailchimpAPI.Subscriber[] members;
     }
@@ -119,8 +119,10 @@ public with sharing class MailchimpSyncManager {
     public String contactsQuery(Integer lim) {
         String query = 'SELECT ' +
             String.join(this.contactFieldsForPush(), ',') +
-            ' FROM Contact' +
-            ' WHERE Email != null AND MailchimpNeedsSync__c = TRUE' +
+            ' FROM Contact WHERE Id IN (' +
+            '   SELECT Contact__c FROM MailchimpSyncStatus__c' +
+            '    WHERE NeedsSync__c = TRUE' +
+            ' )' +
             ' ORDER BY Email ASC';
         if (lim != null) {
             query += ' LIMIT ' + lim;
@@ -129,9 +131,8 @@ public with sharing class MailchimpSyncManager {
     }
 
     public String contactsCountQuery() {
-        String query = 'SELECT COUNT() FROM Contact' +
-            ' WHERE (Email != null AND MailchimpNeedsSync__c = TRUE)' +
-            ' OR MailchimpBatchID__c != null';
+        String query = 'SELECT COUNT() FROM MailchimpSyncStatus__c' +
+            ' WHERE NeedsSync__c = TRUE OR BatchID__c != null';
         return query;
     }
 
@@ -169,7 +170,7 @@ public with sharing class MailchimpSyncManager {
 
     public Datetime lastSyncCompletedAt() {
         AggregateResult[] maxResults =
-            [SELECT MAX(MailchimpLastSyncedAt__c) mostRecentSyncedAt FROM Contact];
+            [SELECT MAX(LastPushed__c) mostRecentSyncedAt FROM MailchimpSyncStatus__c];
         return (Datetime)maxResults[0].get('mostRecentSyncedAt');
     }
 
@@ -293,20 +294,23 @@ public with sharing class MailchimpSyncManager {
         String tagBatchID
     ) {
         DateTime lastSyncedAt = DateTime.now();
-
-        // Mark contacts as synced
-        // TODO: I've observed this fail because of a Flow Trigger blowing over
-        // the Apex CPU time limit. Need to figure out what to do about that.
+        MailchimpSyncStatus__c[] statuses = new List<MailchimpSyncStatus__c>();
         for (Contact c : contacts) {
             if (contactErrors.containsKey(c.Email)) continue;
-            c.MailchimpLastSyncedAt__c = lastSyncedAt;
-            c.MailchimpBatchID__c = tagBatchID;
+            statuses.add(new MailchimpSyncStatus__c(
+                Contact__c=c.Id,
+                Email__c=c.Email,
+                LastPushed__c=lastSyncedAt,
+                BatchID__c=tagBatchID
+            ));
         }
-        Database.SaveResult[] results = Database.update(contacts);
-        for (Database.SaveResult saveResult : results) {
-            if (saveResult.isSuccess()) continue;
+        Database.UpsertResult[] results = Database.upsert(
+            statuses, MailchimpSyncStatus__c.fields.Email__c
+        );
+        for (Database.UpsertResult result : results) {
+            if (result.isSuccess()) continue;
             System.debug('Error(s) updating timestamp on synced records.');
-            for (Database.Error err : saveResult.getErrors()) {
+            for (Database.Error err : result.getErrors()) {
                 System.debug(err.getStatusCode() + ': ' + err.getMessage());
             }
         }
@@ -411,12 +415,12 @@ public with sharing class MailchimpSyncManager {
     public static void updateContactsInBatches(String[] batchIDs) {
         Datetime lastSyncedAt = Datetime.now();
         System.debug('Begin updating contacts for finished batches: ' + batchIDs);
-        for (Contact[] contacts : [SELECT Id, MailchimpBatchID__c, MailchimpLastSyncedAt__c FROM Contact WHERE MailchimpBatchID__c IN :batchIDs]) {
-            for (Contact c : contacts) {
-                c.MailchimpLastSyncedAt__c = lastSyncedAt;
-                c.MailchimpBatchId__c = null;
+        for (MailchimpSyncStatus__c[] statuses : [SELECT Id, BatchID__c, LastPushed__c FROM MailchimpSyncStatus__c WHERE BatchID__c IN :batchIDs]) {
+            for (MailchimpSyncStatus__c s : statuses) {
+                s.LastPushed__c = lastSyncedAt;
+                s.BatchID__c = null;
             }
-            update contacts;
+            update statuses;
         }
         System.debug('End updating contacts for finished batches: ' + batchIDs);
     }
@@ -544,8 +548,7 @@ public with sharing class MailchimpSyncManager {
         for (MailchimpAPI.Subscriber member : members) {
             Contact c = new Contact(
                 Email=member.email_address,
-                MailchimpEmailHash__c=member.ID,
-                MailchimpLastChanged__c=member.last_changed
+                MailchimpEmailHash__c=member.ID
             );
             for (MailchimpFieldMapping__mdt fieldMapping : this.fieldMappings) {
                 if (fieldMapping.Direction__c != 'pull') continue;
@@ -609,6 +612,8 @@ public with sharing class MailchimpSyncManager {
 
     private Map<String, Mailchimp_Sync_Error__c> upsertContacts(MailchimpAPI.Subscriber[] members, Contact[] contacts) {
         Map<String, Mailchimp_Sync_Error__c> contactErrors = new Map<String, Mailchimp_Sync_Error__c>();
+        MailchimpSyncStatus__c[] statuses = new List<MailchimpSyncStatus__c>();
+        MailchimpSyncStatus__c[] statusesToInsert = new List<MailchimpSyncStatus__c>();
 
         // Try to upsert without first/last name, check for the appropriate error.
         // New records will come back with a result with isCreated() == TRUE,
@@ -619,11 +624,20 @@ public with sharing class MailchimpSyncManager {
             Database.UpsertResult upsertResult = results[i];
             Contact c = contacts[i];
             MailchimpAPI.Subscriber member = members[i];
+            MailchimpSyncStatus__c status = new MailchimpSyncStatus__c(
+                Email__c=member.email_address,
+                LastChanged__c=member.last_changed
+            );
 
-            if (upsertResult.isSuccess()) continue;
+            if (upsertResult.isSuccess()) {
+                status.Contact__c = upsertResult.getId();
+                statuses.add(status);
+                continue;
+            }
             if (this.shouldRetry(upsertResult)) {
                 this.addSyncFields(c, member);
                 contactsToInsert.add(c);
+                statusesToInsert.add(status);
                 continue;
             }
 
@@ -648,7 +662,12 @@ public with sharing class MailchimpSyncManager {
         for (Integer i = 0; i < insertResults.size(); ++i) {
             Database.SaveResult insertResult = insertResults[i];
             Contact c = contactsToInsert[i];
-            if (insertResult.isSuccess()) continue;
+            MailchimpSyncStatus__c status = statusesToInsert[i];
+            if (insertResult.isSuccess()) {
+                status.Contact__c = insertResult.getId();
+                statuses.add(status);
+                continue;
+            }
 
             System.debug('Error(s) creating contact.');
             for (Database.Error err : insertResult.getErrors()) {
@@ -664,6 +683,18 @@ public with sharing class MailchimpSyncManager {
             }
         }
 
+        Database.UpsertResult[] statusResults = Database.upsert(
+            statuses, MailchimpSyncStatus__c.fields.Email__c
+        );
+        for (Database.UpsertResult result : statusResults) {
+            if (result.isSuccess()) continue;
+            System.debug('Error(s) updating timestamp on pulled records.');
+            for (Database.Error err : result.getErrors()) {
+                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+            }
+        }
+
+        insert contactErrors.values();
         return contactErrors;
     }
 
@@ -748,7 +779,6 @@ public with sharing class MailchimpSyncManager {
         Contact[] contacts = this.collectContacts(memResult.members);
         Map<String, Mailchimp_Sync_Error__c> contactErrors =
             this.upsertContacts(memResult.members, contacts);
-        insert contactErrors.values();
 
         MailchimpSubscription__c[] subscriptions = this.collectSubscriptions(
             memResult.members,

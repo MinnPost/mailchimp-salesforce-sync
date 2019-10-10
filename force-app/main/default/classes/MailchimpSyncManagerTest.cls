@@ -24,6 +24,10 @@ private class MailchimpSyncManagerTest {
 
     @TestSetup
     static void setup() {
+        MailchimpSettings__c settings = MailchimpSettings__c.getOrgDefaults();
+        settings.AudienceID__c = '3528e74526';
+        upsert settings;
+
         Mailchimp_Batch_Operation__c batch = new Mailchimp_Batch_Operation__c(
             Name='rA45kKQWre',
             Status__c='pending',
@@ -43,47 +47,84 @@ private class MailchimpSyncManagerTest {
         insert finishedBatch;
 
         Contact[] testContacts = new List<Contact>{
-            // Should be synced
             new Contact(
                 FirstName='Joe',
                 LastName='Schmoe',
-                Email='joe.schmoe@example.com',
-                MailchimpLastChanged__c=Datetime.newInstanceGmt(2019, 9, 17, 10, 2, 55)
+                Email='joe.schmoe@example.com'
             ),
-            // Not in Mailchimp, should not be synced
             new Contact(
                 FirstName='Julie',
                 LastName='Schmoo',
-                Email='jschmoo@example.com',
-                MailchimpLastChanged__c=null
+                Email='jschmoo@example.com'
             ),
-            // Already synced, should not be synced again
             new Contact(
                 FirstName='Abdi',
                 LastName='Mohammed',
-                Email='mohabdi@example.com',
-                MailchimpLastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
-                MailchimpLastSyncedAt__c=Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 10)
+                Email='mohabdi@example.com'
             ),
-            // Pulled but not pushed back yet
             new Contact(
                 FirstName='Helen',
                 LastName='Troius',
-                Email='helen1604@example.com',
-                MailchimpLastChanged__c=Datetime.newInstanceGmt(2019, 9, 12, 5, 5, 5),
-                MailchimpLastSyncedAt__c=Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 10)
+                Email='helen1604@example.com'
             ),
-            // Synced but tag operation still in progress
             new Contact(
                 FirstName='Fujiwara',
                 LastName='Morimoto',
-                Email='mfuji@example.co.jp',
-                MailchimpLastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
-                MailchimpLastSyncedAt__c=Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 10),
-                MailchimpBatchID__c='psBNCYMK33'
+                Email='mfuji@example.co.jp'
             )
         };
-        insert testContacts;
+        Database.SaveResult[] results = Database.insert(testContacts);
+
+        MailchimpSyncStatus__c[] testStatuses = new List<MailchimpSyncStatus__c>{
+            // Pulled but never pushed back
+            new MailchimpSyncStatus__c(
+                Email__c='joe.schmoe@example.com',
+                LastChanged__c=Datetime.newInstanceGmt(2019, 9, 17, 10, 2, 55)
+            ),
+
+            // jschmoo@example.com - Not in Mailchimp, should not be pushed
+            null,
+
+            // Already pushed, should not be pushed again
+            new MailchimpSyncStatus__c(
+                Email__c='mohabdi@example.com',
+                LastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
+                // This will be (very slightly) greater than the contact's
+                // LastModifiedDate
+                LastPushed__c=Datetime.now()
+            ),
+
+            // Pulled but not pushed back yet
+            new MailchimpSyncStatus__c(
+                Email__c='helen1604@example.com',
+                LastChanged__c=Datetime.newInstanceGmt(2019, 9, 12, 5, 5, 5),
+                // A day ago is less than the contact's LastModifiedDate
+                LastPushed__c=(Datetime.now() - 1)
+            ),
+
+            // Synced but tag operation still in progress, should show up in count
+            new MailchimpSyncStatus__c(
+                Email__c='mfuji@example.co.jp',
+                BatchID__c='psBNCYMK33',
+                LastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
+                // This will be (very slightly) greater than the contact's
+                // LastModifiedDate
+                LastPushed__c=Datetime.now()
+            )
+        };
+
+        MailchimpSyncStatus__c[] statusesToInsert = new List<MailchimpSyncStatus__c>();
+        for (Integer i = 0; i < results.size(); ++i) {
+            MailchimpSyncStatus__c status = testStatuses[i];
+            if (status == null) continue;
+
+            status.Contact__c = results[i].getId();
+            statusesToInsert.add(status);
+        }
+        insert statusesToInsert;
+        for (Contact c : testContacts) {
+            c.recalculateFormulas();
+        }
     }
 
     static MailchimpSyncManager subject() {
@@ -294,6 +335,7 @@ private class MailchimpSyncManagerTest {
         Test.startTest();
 
         Contact[] contacts = subject().contactsToSync(400);
+        System.debug(contacts);
         System.assertEquals(2, contacts.size());
         System.assertEquals('Helen', contacts[0].FirstName);
         System.assertEquals('Troius', contacts[0].LastName);
@@ -333,9 +375,11 @@ private class MailchimpSyncManagerTest {
     @isTest static void testLastSyncCompletedAt() {
         Test.startTest();
 
-        System.assertEquals(
-            Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 10),
-            subject().lastSyncCompletedAt()
+        Long delta = Datetime.now().getTime() -
+            subject().lastSyncCompletedAt().getTime();
+        System.debug('testLastSyncCompletedAt: delta = ' + delta);
+        System.assert(
+            delta < 30000 // 30s
         );
 
         Test.stopTest();
