@@ -14,6 +14,21 @@ private class MailchimpSyncManagerTest {
             else if (endpoint.startsWith('batches')) {
                 resp.setBody('{"id":"rA45kKQWre","status":"finished","total_operations":1,"finished_operations":1,"errored_operations":0,"submitted_at":"2019-09-17T10:55:09Z","completed_at":"2019-09-19T10:56:10Z"}');
             }
+            else if (req.getMethod() == 'GET' && endpoint.startsWith('lists/3528e74526/members')) {
+                MailchimpAPI.Subscriber sub = new MailchimpAPI.Subscriber();
+                sub.id = '7ec16a886e5baa2052c20bb16464a45b';
+                sub.email_address = 'helen1604@example.com';
+                sub.status = 'subscribed';
+                sub.member_rating = 3;
+                sub.last_changed = Datetime.newInstanceGmt(2019, 9, 17, 10, 55, 9);
+                sub.merge_fields = new Map<String, String>{};
+                sub.interests = new Map<String, Boolean>{};
+                MailchimpSyncManager.MembersResponse mr =
+                    new MailchimpSyncManager.MembersResponse();
+                mr.members = new List<MailchimpAPI.Subscriber>{ sub };
+                mr.total_items = 1;
+                resp.setBody(JSON.serialize(mr));
+            }
             else {
                 resp.setBody('{}');
             }
@@ -399,6 +414,26 @@ private class MailchimpSyncManagerTest {
             Datetime.newInstanceGmt(2019, 9, 19, 10, 56, 10),
             batch.Completed_At__c
         );
+    }
+
+    @isTest static void testPullAll() {
+        Test.setMock(HttpCalloutMock.class, new MailchimpApiMock());
+        Test.startTest();
+
+        MailchimpSyncManager.PullResult result = subject().pullAll(1000, 0, false);
+        System.assertEquals(MailchimpSyncManager.PullResult.DONE, result);
+
+        Test.stopTest();
+    }
+
+    @isTest static void testPullAllSinceLastSync() {
+        Test.setMock(HttpCalloutMock.class, new MailchimpApiMock());
+        Test.startTest();
+
+        MailchimpSyncManager.PullResult result = subject().pullAll(1000, 0);
+        System.assertEquals(MailchimpSyncManager.PullResult.DONE, result);
+
+        Test.stopTest();
     }
 
     @isTest static void testPushAll() {
