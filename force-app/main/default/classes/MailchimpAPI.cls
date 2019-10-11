@@ -148,11 +148,11 @@ public class MailchimpAPI {
     }
 
     public String mergeFieldsEndpoint() {
-        return this.listEndpoint() + '/merge-fields';
+        return this.listEndpoint() + '/merge-fields?count=1000';
     }
 
     public String tagsEndpoint() {
-        return this.listEndpoint() + '/segments?type=static';
+        return this.listEndpoint() + '/segments?type=static&count=1000';
     }
 
     public String membersEndpoint() {
