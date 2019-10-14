@@ -3,7 +3,7 @@
     <fullName>NeedsSync__c</fullName>
     <description>Whether the record has been updated since it was last synced to Mailchimp.</description>
     <externalId>false</externalId>
-    <formula>ISBLANK(LastPushed__c) || Contact__r.LastModifiedDate - LastPushed__c &gt; 0</formula>
+    <formula>ISBLANK(LastPushed__c) || (Contact__r.LastModifiedDate - LastPushed__c &gt; 0) || (Contact__r.Account.LastModifiedDate - LastPushed__c &gt; 0)</formula>
     <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
     <label>Needs sync to Mailchimp?</label>
     <trackTrending>false</trackTrending>
