@@ -1,5 +1,5 @@
 global with sharing class MailchimpPullJob implements Queueable, Database.AllowsCallouts {
-    public Integer count = 400;
+    public Integer count = 200;
     public Integer offset = 0;
     public Boolean sinceLastChanged;
 
@@ -30,6 +30,6 @@ global with sharing class MailchimpPullJob implements Queueable, Database.Allows
 
         // All done, now start pushing the Salesforce fields for the contacts
         // we just pulled
-        Database.executeBatch(new MailchimpPushJob(), 400);
+        Database.executeBatch(new MailchimpPushJob(), 200);
     }
 }

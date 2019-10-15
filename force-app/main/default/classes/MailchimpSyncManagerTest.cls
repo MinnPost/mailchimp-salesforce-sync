@@ -349,7 +349,7 @@ private class MailchimpSyncManagerTest {
     @isTest static void testContactsToSync() {
         Test.startTest();
 
-        Contact[] contacts = subject().contactsToSync(400);
+        Contact[] contacts = subject().contactsToSync(200);
         System.debug(contacts);
         System.assertEquals(2, contacts.size());
         System.assertEquals('Helen', contacts[0].FirstName);

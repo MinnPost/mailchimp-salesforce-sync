@@ -163,7 +163,7 @@ public with sharing class MailchimpSyncController {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
 
-        System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(400, 0)));
+        System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(200, 0)));
 
         return redirect;
     }
@@ -172,7 +172,7 @@ public with sharing class MailchimpSyncController {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
 
-        System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(400, 0, false)));
+        System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(200, 0, false)));
 
         return redirect;
     }
