@@ -694,7 +694,16 @@ public with sharing class MailchimpSyncManager {
             }
         }
 
-        insert contactErrors.values();
+        Database.SaveResult[] errResults = Database.insert(
+            contactErrors.values(), false
+        );
+        for (Database.SaveResult result : errResults) {
+            if (result.isSuccess()) continue;
+            System.debug('Error(s) inserting error record!');
+            for (Database.Error err : result.getErrors()) {
+                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+            }
+        }
         return contactErrors;
     }
 
