@@ -73,9 +73,9 @@ public with sharing class MailchimpFieldMappingsController {
         get {
             if (directionChoices == null) {
                 directionChoices = new List<SelectOption>{
-                    new SelectOption('push', '->'),
-                    new SelectOption('pull', '<-'),
-                    new SelectOption('sync', '<->')
+                    new SelectOption('push', 'Push ->'),
+                    new SelectOption('pull', '<- Pull'),
+                    new SelectOption('sync', 'Set on creation')
                 };
             }
             return directionChoices;

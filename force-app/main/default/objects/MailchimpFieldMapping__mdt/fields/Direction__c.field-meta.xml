@@ -23,7 +23,7 @@
             <value>
                 <fullName>sync</fullName>
                 <default>false</default>
-                <label>Use for sync</label>
+                <label>Set on creation</label>
             </value>
         </valueSetDefinition>
     </valueSet>
