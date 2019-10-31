@@ -8,7 +8,8 @@ function onLoad(fn) {
 }
 
 function setChoices(parentElement, choices) {
-    Object.keys(choices).forEach(function(item) {
+    var sortedKeys = Object.keys(choices).sort();
+    sortedKeys.forEach(function(item) {
         var opt = document.createElement('option');
         opt.setAttribute('value', item);
         opt.innerText = choices[item];

@@ -52,7 +52,9 @@ public with sharing class MailchimpFieldMappingsController {
                     this.getFieldsByObject();
                 fieldChoices = new List<SelectOption>{};
                 for (String objType : fieldsByObject.keySet()) {
-                    for (String fieldName : fieldsByObject.get(objType).keySet()) {
+                    String[] sortedKeys = new List<String>(fieldsByObject.get(objType).keySet());
+                    sortedKeys.sort();
+                    for (String fieldName : sortedKeys) {
                         fieldChoices.add(
                             new SelectOption(
                                 fieldName,
