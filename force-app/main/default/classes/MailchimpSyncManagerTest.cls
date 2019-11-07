@@ -68,6 +68,8 @@ private class MailchimpSyncManagerTest {
         }
     }
 
+    private static final Integer maxDelta = 60000; // 60s
+
     @TestSetup
     static void setup() {
         MailchimpSettings__c settings = MailchimpSettings__c.getOrgDefaults();
@@ -80,6 +82,12 @@ private class MailchimpSyncManagerTest {
             Submitted_At__c=Datetime.newInstanceGmt(2019, 9, 11, 10, 10, 50)
         );
         insert batch;
+        Mailchimp_Batch_Operation__c startedBatch = new Mailchimp_Batch_Operation__c(
+            Name='G8XFlWEXtBI',
+            Status__c='started',
+            Submitted_At__c=Datetime.newInstanceGmt(2019, 9, 9, 9, 9, 9)
+        );
+        insert startedBatch;
         Mailchimp_Batch_Operation__c finishedBatch = new Mailchimp_Batch_Operation__c(
             Name='MfpxUuhLKC',
             Status__c='finished',
@@ -377,6 +385,17 @@ private class MailchimpSyncManagerTest {
         return new MailchimpSyncManager(fieldMappings);
     }
 
+    @isTest static void testConstructor() {
+        Test.startTest();
+
+        // This is a bit of a cheap test, meant to cover the no-argument
+        // constructor and the fieldMappings getter.
+        MailchimpSyncManager subject = new MailchimpSyncManager();
+        System.assert(subject.fieldMappings != null);
+
+        Test.stopTest();
+    }
+
     @isTest static void testContactsToSync() {
         Test.startTest();
 
@@ -445,6 +464,16 @@ private class MailchimpSyncManagerTest {
         Test.startTest();
 
         Mailchimp_Batch_Operation__c[] batches = subject().unfinishedBatches();
+        System.assertEquals(2, batches.size());
+        System.assertEquals('rA45kKQWre', batches[0].Name);
+
+        Test.stopTest();
+    }
+
+    @isTest static void testUnfinishedBatchesLimit() {
+        Test.startTest();
+
+        Mailchimp_Batch_Operation__c[] batches = subject().unfinishedBatches(1);
         System.assertEquals(1, batches.size());
         System.assertEquals('rA45kKQWre', batches[0].Name);
 
@@ -454,11 +483,14 @@ private class MailchimpSyncManagerTest {
     @isTest static void testLastSyncCompletedAt() {
         Test.startTest();
 
+        Datetime result = subject().lastSyncCompletedAt();
         Long delta = Datetime.now().getTime() -
-            subject().lastSyncCompletedAt().getTime();
+            result.getTime();
         System.debug('testLastSyncCompletedAt: delta = ' + delta);
         System.assert(
-            delta < 60000 // 60s
+            delta < maxDelta,
+            'Expected: ≈ ' + Datetime.now() +
+            ', Actual: ' + result
         );
 
         Test.stopTest();
@@ -512,6 +544,24 @@ private class MailchimpSyncManagerTest {
         MailchimpSyncManager.PullResult result = subject().pullAll(1000, 0, false);
         System.assertEquals(MailchimpSyncManager.PullResult.DONE, result);
 
+        MailchimpSyncStatus__c status =
+            [SELECT Email__c, LastChanged__c, LastPushed__c, NeedsSync__c
+             FROM MailchimpSyncStatus__c
+             WHERE Email__c = 'helen1604@example.com'
+             LIMIT 1];
+        System.assertEquals(true, status.NeedsSync__c);
+        System.assertEquals(
+            Datetime.newInstanceGmt(2019, 9, 17, 10, 55, 9),
+            status.LastChanged__c
+        );
+        Long delta = (Datetime.now() - 1).getTime() -
+            status.LastPushed__c.getTime();
+        System.assert(
+            delta < maxDelta,
+            'Expected: ≈ ' + (Datetime.now() - 1) +
+            ', Actual: ' + status.LastPushed__c
+        );
+
         Test.stopTest();
     }
 
@@ -521,6 +571,24 @@ private class MailchimpSyncManagerTest {
 
         MailchimpSyncManager.PullResult result = subject().pullAll(1000, 0);
         System.assertEquals(MailchimpSyncManager.PullResult.DONE, result);
+
+        MailchimpSyncStatus__c status =
+            [SELECT Email__c, LastChanged__c, LastPushed__c, NeedsSync__c
+             FROM MailchimpSyncStatus__c
+             WHERE Email__c = 'helen1604@example.com'
+             LIMIT 1];
+        System.assertEquals(true, status.NeedsSync__c);
+        System.assertEquals(
+            Datetime.newInstanceGmt(2019, 9, 17, 10, 55, 9),
+            status.LastChanged__c
+        );
+        Long delta = (Datetime.now() - 1).getTime() -
+            status.LastPushed__c.getTime();
+        System.assert(
+            delta < maxDelta,
+            'Expected: ≈ ' + (Datetime.now() - 1) +
+            ', Actual: ' + status.LastPushed__c
+        );
 
         Test.stopTest();
     }

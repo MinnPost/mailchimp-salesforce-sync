@@ -14,10 +14,6 @@ public with sharing class MailchimpSyncManager {
         public Integer total_updated;
         public Integer error_count;
         public BatchEmailError[] errors;
-
-        public ContactFieldsResponse() {
-            this.errors = new List<BatchEmailError>();
-        }
     }
 
     class BatchEmailError {
@@ -46,10 +42,6 @@ public with sharing class MailchimpSyncManager {
         public Mailchimp_Sync_Error__c requestError;
         public Integer totalItems = 0;
 
-        public MembersResult() {
-            this.members = new List<MailchimpAPI.Subscriber>();
-        }
-
         public Boolean isError() {
             return (requestError != null);
         }
@@ -60,12 +52,16 @@ public with sharing class MailchimpSyncManager {
         public Integer totalUpdated = 0;
         public Integer errorCount = 0;
         public Mailchimp_Sync_Error__c requestError;
-        public Map<String, Mailchimp_Sync_Error__c> contactErrors { get; private set; }
-        public Long totalItems = 0;
-
-        public Result() {
-            this.contactErrors = new Map<String, Mailchimp_Sync_Error__c>();
+        public Map<String, Mailchimp_Sync_Error__c> contactErrors {
+            get {
+                if (contactErrors == null) {
+                    contactErrors = new Map<String, Mailchimp_Sync_Error__c>();
+                }
+                return contactErrors;
+            }
+            private set;
         }
+        public Long totalItems = 0;
 
         public Boolean isError() {
             return (requestError != null);
@@ -695,7 +691,7 @@ public with sharing class MailchimpSyncManager {
         return contactErrors;
     }
 
-    public MailchimpSubscription__c[] collectSubscriptions(
+    private MailchimpSubscription__c[] collectSubscriptions(
         MailchimpAPI.Subscriber[] members,
         Set<String> contactErrors
     ) {
