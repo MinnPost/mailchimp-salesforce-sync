@@ -1,6 +1,16 @@
 @isTest
 private class MailchimpSyncManagerTest {
     class MailchimpApiMock implements HttpCalloutMock {
+        public Boolean respondWithError { get; private set; }
+
+        public MailchimpApiMock() {
+            this(false);
+        }
+
+        public MailchimpApiMock(Boolean respondWithError) {
+            this.respondWithError = respondWithError;
+        }
+
         public HttpResponse respond(HttpRequest req) {
             HttpResponse resp = new HttpResponse();
             resp.setStatusCode(200);
@@ -58,7 +68,12 @@ private class MailchimpSyncManagerTest {
                 resp.setBody(JSON.serialize(intResp));
             }
             else if (req.getMethod() == 'POST' && endpoint == 'lists/3528e74526') {
-                resp.setBody('{}');
+                if (this.respondWithError) {
+                    resp.setBody('{"errors":[{"email_address":"joe.schmoe@example.com","error":"Test Batch Error"}],"total_created":0,"total_updated":0,"error_count":1}');
+                }
+                else {
+                    resp.setBody('{}');
+                }
             }
             else {
                 System.assert(false, 'No mock response set for ' + req.getMethod() + ' ' + endpoint);
@@ -73,6 +88,15 @@ private class MailchimpSyncManagerTest {
             HttpResponse resp = new HttpResponse();
             resp.setStatusCode(422);
             resp.setBody('{"type":"test_error","title":"Test Error Response","status":"422","detail":"","instance":""}');
+            return resp;
+        }
+    }
+
+    class MailchimpApiInvalidJSONMock implements HttpCalloutMock {
+        public HttpResponse respond(HttpRequest req) {
+            HttpResponse resp = new HttpResponse();
+            resp.setStatusCode(200);
+            resp.setBody('{[}] WAT');
             return resp;
         }
     }
@@ -619,8 +643,34 @@ private class MailchimpSyncManagerTest {
         Test.setMock(HttpCalloutMock.class, new MailchimpApiErrorMock());
         Test.startTest();
 
-        MailchimpSyncManager mailchimp = subject();
-        mailchimp.pushAll(new List<Contact>{});
+        MailchimpSyncManager.Result result = subject().pushAll(new List<Contact>{});
+        System.assert(result.isError());
+
+        Test.stopTest();
+    }
+
+    @isTest static void testPushAllInvalidJSON() {
+        Test.setMock(HttpCalloutMock.class, new MailchimpApiInvalidJSONMock());
+        Test.startTest();
+
+        MailchimpSyncManager.Result result = subject().pushAll(new List<Contact>{});
+        System.assert(result.isError());
+
+        Test.stopTest();
+    }
+
+    @isTest static void testPushAllContactParseError() {
+        Test.setMock(HttpCalloutMock.class, new MailchimpApiMock(true));
+        Test.startTest();
+
+        MailchimpSyncManager.Result result = subject().pushAll(new List<Contact>{});
+        System.assertEquals(1, result.contactErrors.size());
+        
+        Mailchimp_Sync_Error__c err =
+            [SELECT Stage__c, Contact__c, Detail__c
+             FROM Mailchimp_Sync_Error__c
+             WHERE Contact__r.Email = 'joe.schmoe@example.com'];
+        System.assertEquals('4 - Add/update contacts in Mailchimp', err.Stage__c);
 
         Test.stopTest();
     }
