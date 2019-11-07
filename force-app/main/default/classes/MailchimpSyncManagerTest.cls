@@ -33,10 +33,20 @@ private class MailchimpSyncManagerTest {
                 sub.last_changed = Datetime.newInstanceGmt(2019, 9, 17, 10, 55, 9);
                 sub.merge_fields = new Map<String, String>{};
                 sub.interests = new Map<String, Boolean>{};
+
+                MailchimpAPI.Subscriber newSub = new MailchimpAPI.Subscriber();
+                newSub.id = '779639e3ae4c9dac2663abfd18fca8d2';
+                newSub.email_address = 'babs@barbrastreisand.com';
+                newSub.status = 'subscribed';
+                newSub.member_rating = 5;
+                newSub.last_changed = Datetime.newInstanceGmt(1942, 4, 24, 12, 0, 0);
+                newSub.merge_fields = new Map<String, String>{};
+                newSub.interests = new Map<String, Boolean>{};
+
                 MailchimpSyncManager.MembersResponse mr =
                     new MailchimpSyncManager.MembersResponse();
-                mr.members = new List<MailchimpAPI.Subscriber>{ sub };
-                mr.total_items = 1;
+                mr.members = new List<MailchimpAPI.Subscriber>{ sub, newSub };
+                mr.total_items = 2;
                 resp.setBody(JSON.serialize(mr));
             }
             else if (
@@ -192,7 +202,7 @@ private class MailchimpSyncManagerTest {
             // Synced but tag operation still in progress, should show up in count
             new MailchimpSyncStatus__c(
                 Email__c='mfuji@example.co.jp',
-                BatchID__c='psBNCYMK33',
+                BatchID__c='rA45kKQWre',
                 LastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
                 // A day from now is greater than the contact's
                 // LastModifiedDate
