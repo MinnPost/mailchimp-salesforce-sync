@@ -555,6 +555,21 @@ private class MailchimpSyncManagerTest {
         Test.stopTest();
     }
 
+    @isTest static void testUpdateBatchesError() {
+        Test.setMock(HttpCalloutMock.class, new MailchimpApiErrorMock());
+        Test.startTest();
+
+        subject().updateBatches();
+        Mailchimp_Batch_Operation__c batch =
+            [SELECT Name, Status__c, Completed_At__c, Total_Operations__c
+             FROM Mailchimp_Batch_Operation__c
+             WHERE Name = 'rA45kKQWre' LIMIT 1];
+        System.assertEquals('pending', batch.Status__c);
+        System.assertEquals(null, batch.Completed_At__c);
+
+        Test.stopTest();
+    }
+
     @isTest static void testPullInterests() {
         Test.setMock(HttpCalloutMock.class, new MailchimpApiMock());
         Test.startTest();
@@ -566,6 +581,34 @@ private class MailchimpSyncManagerTest {
 
         Integer count = [SELECT COUNT() FROM Interest__c];
         System.assertEquals(2, count);
+
+        Test.stopTest();
+    }
+
+    @isTest static void testPullInterestsResponseError() {
+        Test.setMock(HttpCalloutMock.class, new MailchimpApiErrorMock());
+        Test.startTest();
+
+        subject().pullInterests();
+        Mailchimp_Sync_Error__c err =
+            [SELECT Stage__c, Status_Code__c, Title__c, Detail__c
+             FROM Mailchimp_Sync_Error__c LIMIT 1];
+        System.assertEquals('1 - Fetch interests from Mailchimp', err.Stage__c);
+        System.assertEquals('422', err.Status_Code__c);
+
+        Test.stopTest();
+    }
+
+    @isTest static void testPullInterestsInvalidJSON() {
+        Test.setMock(HttpCalloutMock.class, new MailchimpApiInvalidJSONMock());
+        Test.startTest();
+
+        subject().pullInterests();
+        Mailchimp_Sync_Error__c err =
+            [SELECT Stage__c, Status_Code__c, Title__c, Detail__c
+             FROM Mailchimp_Sync_Error__c LIMIT 1];
+        System.assertEquals('1 - Fetch interests from Mailchimp', err.Stage__c);
+        System.assertEquals('System.JSONException while parsing Mailchimp interest categories response', err.Title__c);
 
         Test.stopTest();
     }
