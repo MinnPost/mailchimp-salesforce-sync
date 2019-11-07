@@ -68,6 +68,15 @@ private class MailchimpSyncManagerTest {
         }
     }
 
+    class MailchimpApiErrorMock implements HttpCalloutMock {
+        public HttpResponse respond(HttpRequest req) {
+            HttpResponse resp = new HttpResponse();
+            resp.setStatusCode(422);
+            resp.setBody('{"type":"test_error","title":"Test Error Response","status":"422","detail":"","instance":""}');
+            return resp;
+        }
+    }
+
     private static final Integer maxDelta = 60000; // 60s
 
     @TestSetup
@@ -602,6 +611,16 @@ private class MailchimpSyncManagerTest {
         MailchimpSyncManager.Result result = mailchimp.pushAll(contacts);
         System.assert(!result.isError());
         System.assert(result.contactErrors.isEmpty());
+
+        Test.stopTest();
+    }
+
+    @isTest static void testPushAllResponseError() {
+        Test.setMock(HttpCalloutMock.class, new MailchimpApiErrorMock());
+        Test.startTest();
+
+        MailchimpSyncManager mailchimp = subject();
+        mailchimp.pushAll(new List<Contact>{});
 
         Test.stopTest();
     }
