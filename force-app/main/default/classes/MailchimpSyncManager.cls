@@ -377,18 +377,6 @@ public with sharing class MailchimpSyncManager {
         MailchimpSyncManager.updateContactsInBatches(batchIDsForContactUpdate);
     }
 
-    public void updateBatch(String batchId) {
-        Mailchimp_Batch_Operation__c batch =
-            [SELECT Id, Name, Status__c, Submitted_At__c, Completed_At__c,
-                    Total_Operations__c, Finished_Operations__c, Errored_Operations__c,
-                    Response_Body_URL__c
-             FROM Mailchimp_Batch_Operation__c WHERE Name = :batchId LIMIT 1];
-        Result result = this.updateBatch(batch);
-        if (result.isError()) {
-            insert result.requestError;
-        }
-    }
-
     public Result updateBatch(Mailchimp_Batch_Operation__c batch) {
         Result result = new Result();
 
@@ -542,7 +530,7 @@ public with sharing class MailchimpSyncManager {
         this.upsertInterests(interestCategories);
     }
 
-    public Contact[] collectContacts(MailchimpAPI.Subscriber[] members) {
+    private Contact[] collectContacts(MailchimpAPI.Subscriber[] members) {
         Contact[] contacts = new List<Contact>();
 
         for (MailchimpAPI.Subscriber member : members) {

@@ -91,6 +91,11 @@ public class MailchimpAPI {
     public class InterestsResponse {
         public Interest[] interests;
         public Integer total_items;
+
+        public InterestsResponse(Interest[] interests) {
+            this.interests = interests;
+            this.total_items = interests.size();
+        }
     }
 
     public class Interest {
@@ -98,6 +103,12 @@ public class MailchimpAPI {
         public String name;
         public Long subscriber_count;
         public Integer display_order;
+
+        public Interest(String id, String name, Long subscriber_count) {
+            this.id = id;
+            this.name = name;
+            this.subscriber_count = subscriber_count;
+        }
     }
 
     public class InterestCategoriesResponse {
@@ -110,10 +121,14 @@ public class MailchimpAPI {
         public String title;
         public String type;
         public Integer display_order;
-        public List<Interest> interests;
-
-        public InterestCategory() {
-            this.interests = new List<Interest>();
+        public List<Interest> interests {
+            get {
+                if (interests == null) {
+                    interests = new List<Interest>();
+                }
+                return interests;
+            }
+            set;
         }
     }
 

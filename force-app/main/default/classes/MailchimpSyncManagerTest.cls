@@ -29,8 +29,39 @@ private class MailchimpSyncManagerTest {
                 mr.total_items = 1;
                 resp.setBody(JSON.serialize(mr));
             }
-            else {
+            else if (
+                req.getMethod() == 'GET' &&
+                endpoint == 'lists/3528e74526/interest-categories'
+            ) {
+                resp.setBody('{"list_id":"3528e74526","categories":[{"list_id":"3528e74526","id":"9c9bf5fa6d","title":"Subscribe to these regular newsletters","display_order":0,"type":"checkboxes"},{"list_id":"3528e74526","id":"6707c372b5","title":"Occasional MinnPost emails","display_order":0,"type":"checkboxes"}],"total_items":2}');
+            }
+            else if (
+                req.getMethod() == 'GET' &&
+                endpoint.startsWith('lists/3528e74526/interest-categories/')
+            ) {
+                MailchimpAPI.Interest interest;
+
+                if (endpoint.endsWith('/9c9bf5fa6d/interests')) {
+                    interest = new MailchimpAPI.Interest(
+                        '01cdc38eca', 'Greater Minnesota newsletter', 256
+                    );
+                }
+                else if (endpoint.endsWith('/6707c372b5/interests')) {
+                    interest = new MailchimpAPI.Interest(
+                        'ff0e9befac', 'Opportunities to give input/feedback', 395
+                    );
+                }
+
+                MailchimpAPI.InterestsResponse intResp = new MailchimpAPI.InterestsResponse(
+                    new List<MailchimpAPI.Interest>{ interest }
+                );
+                resp.setBody(JSON.serialize(intResp));
+            }
+            else if (req.getMethod() == 'POST' && endpoint == 'lists/3528e74526') {
                 resp.setBody('{}');
+            }
+            else {
+                System.assert(false, 'No mock response set for ' + req.getMethod() + ' ' + endpoint);
             }
 
             return resp;
@@ -104,9 +135,9 @@ private class MailchimpSyncManagerTest {
             new MailchimpSyncStatus__c(
                 Email__c='mohabdi@example.com',
                 LastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
-                // This will be (very slightly) greater than the contact's
+                // A day from now is greater than the contact's
                 // LastModifiedDate
-                LastPushed__c=Datetime.now()
+                LastPushed__c=(Datetime.now() + 1)
             ),
 
             // Pulled but not pushed back yet
@@ -122,9 +153,9 @@ private class MailchimpSyncManagerTest {
                 Email__c='mfuji@example.co.jp',
                 BatchID__c='psBNCYMK33',
                 LastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
-                // This will be (very slightly) greater than the contact's
+                // A day from now is greater than the contact's
                 // LastModifiedDate
-                LastPushed__c=Datetime.now()
+                LastPushed__c=(Datetime.now() + 1)
             )
         };
 
@@ -350,7 +381,6 @@ private class MailchimpSyncManagerTest {
         Test.startTest();
 
         Contact[] contacts = subject().contactsToSync(200);
-        System.debug(contacts);
         System.assertEquals(2, contacts.size());
         System.assertEquals('Helen', contacts[0].FirstName);
         System.assertEquals('Troius', contacts[0].LastName);
@@ -363,6 +393,40 @@ private class MailchimpSyncManagerTest {
         System.assertEquals(
             'Household Account',
             contacts[1].Account.SF_Record_Type__c
+        );
+
+        Test.stopTest();
+    }
+
+    @isTest static void testContactsQueryLocator() {
+        Test.startTest();
+
+        String expectedQuery = 'SELECT Id,Email,FirstName,LastName,Drupal_ID__c,' +
+            'Drupal_Username__c,MailchimpEmailHash__c,' +
+            'Account.CY_contribution_revenue__c,' +
+            'Account.CY_1_contribution_revenue__c,' +
+            'Account.CY_2_contribution_revenue__c,' +
+            'Account.CY_3_contribution_revenue__c,Account.Id,' +
+            'Account.Membership_Expiration_Date__c,' +
+            'Account.Membership_Level__c,' +
+            'Account.Membership_Level_Number__c,' +
+            'Account.Membership_level_qualification_amount__c,' +
+            'Account.Recurring_donations_Annualized_value_new__c,' +
+            'Account.SF_Record_Type__c,Active_sustainer_account__c,' +
+            'MinnPost_com_user_account__c,Current_member__c,Lapsed_member__c,' +
+            'Never_member__c,Is_partner_offer_eligible__c' +
+            ' FROM Contact WHERE Id IN (' +
+            '   SELECT Contact__c FROM MailchimpSyncStatus__c' +
+            '    WHERE NeedsSync__c = TRUE' +
+            ' )' +
+            ' ORDER BY Email ASC';
+        System.assertEquals(
+            expectedQuery,
+            subject().contactsQueryLocator().getQuery()
+        );
+        System.assertEquals(
+            expectedQuery + ' LIMIT 10',
+            subject().contactsQueryLocator(10).getQuery()
         );
 
         Test.stopTest();
@@ -394,8 +458,16 @@ private class MailchimpSyncManagerTest {
             subject().lastSyncCompletedAt().getTime();
         System.debug('testLastSyncCompletedAt: delta = ' + delta);
         System.assert(
-            delta < 30000 // 30s
+            delta < 60000 // 60s
         );
+
+        Test.stopTest();
+    }
+
+    @isTest static void testInProgressJobsCount() {
+        Test.startTest();
+
+        System.assertEquals(0, subject().inProgressJobsCount());
 
         Test.stopTest();
     }
@@ -414,6 +486,23 @@ private class MailchimpSyncManagerTest {
             Datetime.newInstanceGmt(2019, 9, 19, 10, 56, 10),
             batch.Completed_At__c
         );
+
+        Test.stopTest();
+    }
+
+    @isTest static void testPullInterests() {
+        Test.setMock(HttpCalloutMock.class, new MailchimpApiMock());
+        Test.startTest();
+
+        subject().pullInterests();
+
+        Integer catCount = [SELECT COUNT() FROM InterestCategory__c];
+        System.assertEquals(2, catCount);
+
+        Integer count = [SELECT COUNT() FROM Interest__c];
+        System.assertEquals(2, count);
+
+        Test.stopTest();
     }
 
     @isTest static void testPullAll() {
