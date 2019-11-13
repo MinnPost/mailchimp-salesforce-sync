@@ -55,7 +55,11 @@ function updateAttrFieldTagChoices(
     // 'pull' or 'sync'
     attrFieldTagSelect.querySelector('optgroup#mcMemberAttrs').removeAttribute('disabled');
     attrFieldTagSelect.querySelector('optgroup#mcMergeFields').removeAttribute('disabled');
-    attrFieldTagSelect.querySelector('optgroup#mcTags').setAttribute('disabled', '');
+    if (this.value == 'pull') {
+        attrFieldTagSelect.querySelector('optgroup#mcTags').removeAttribute('disabled', '');
+    } else {
+        attrFieldTagSelect.querySelector('optgroup#mcTags').setAttribute('disabled', '');
+    }
     defaultValueCol.forEach(function(item) {
         item.style.display = '';
     });

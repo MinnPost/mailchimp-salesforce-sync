@@ -537,10 +537,26 @@ public with sharing class MailchimpSyncManager {
             for (MailchimpFieldMapping__mdt fieldMapping : this.fieldMappings) {
                 if (fieldMapping.Direction__c != 'pull') continue;
 
-                c.put(
-                    fieldMapping.Salesforce_Field_API_Name__c,
-                    member.get(fieldMapping.Mailchimp_Member_Attribute__c)
-                );
+                switch on fieldMapping.Push_To_Mailchimp_As__c {
+                    when '*|MERGE|* Field' {
+                        c.put(
+                            fieldMapping.Salesforce_Field_API_Name__c,
+                            member.get(fieldMapping.Mailchimp_Merge_Field_Tag__c)
+                        );
+                    }
+                    when 'Tag' {
+                        c.put(
+                            fieldMapping.Salesforce_Field_API_Name__c,
+                            member.isTaggedWith(fieldMapping.Mailchimp_Merge_Field_Tag__c)
+                        );
+                    }
+                    when else {
+                        c.put(
+                            fieldMapping.Salesforce_Field_API_Name__c,
+                            member.get(fieldMapping.Mailchimp_Member_Attribute__c)
+                        );
+                    }
+                }
             }
             contacts.add(c);
         }

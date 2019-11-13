@@ -24,7 +24,8 @@ public class MailchimpAPI {
         'members.member_rating',
         'members.last_changed',
         'members.merge_fields',
-        'members.interests'
+        'members.interests',
+        'members.tags'
     };
 
     private Http connection {
@@ -37,6 +38,11 @@ public class MailchimpAPI {
         set;
     }
 
+    public class SubscriberTag {
+        public Long id;
+        public String name;
+    }
+
     public class Subscriber {
         public String ID;
         public String email_address;
@@ -45,6 +51,7 @@ public class MailchimpAPI {
         public Datetime last_changed;
         public Map<String, String> merge_fields;
         public Map<String, Boolean> interests;
+        public SubscriberTag[] tags;
 
         public String getEmailAddress() {
             return this.email_address;
@@ -72,9 +79,19 @@ public class MailchimpAPI {
                     return this.last_changed;
                 }
                 when else {
+                    if (merge_fields.containsKey(attrName)) {
+                        return merge_fields.get(attrName);
+                    }
                     throw new TypeException('Can\'t get unknown attribute ' + attrName);
                 }
             }
+        }
+
+        public Boolean isTaggedWith(String tagName) {
+            for (SubscriberTag tag : tags) {
+                if (tagName == tag.name) { return true; }
+            }
+            return false;
         }
     }
 
