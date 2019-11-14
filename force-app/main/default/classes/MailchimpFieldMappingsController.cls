@@ -104,6 +104,16 @@ public with sharing class MailchimpFieldMappingsController {
 
     public Map<String, Map<String, String>> getFieldsByObject() {
         String[] objTypes = new String[]{ 'Account', 'Contact' };
+
+        Map<String, Set<String>> mappedFields = new Map<String, Set<String>>{
+            'Account' => new Set<String>(),
+            'Contact' => new Set<String>()
+        };
+        for (MailchimpFieldMapping__mdt mapping : fieldMappings) {
+            mappedFields.get(mapping.Salesforce_Object_API_Name__c)
+                .add(mapping.Salesforce_Field_API_Name__c);
+        }
+
         Schema.DescribeSObjectResult[] objDescs =
             Schema.describeSObjects(objTypes);
         Map<String, Map<String, String>> choicesByObject =
@@ -113,6 +123,12 @@ public with sharing class MailchimpFieldMappingsController {
                 objDesc.fields.getMap();
             Map<String, String> choices = new Map<String, String>();
             for (String fn : fieldMap.keySet()) {
+                if (mappedFields
+                    .get(objDesc.getLocalName())
+                    .contains(fn))
+                {
+                    continue;
+                }
                 choices.put(fn, fieldMap.get(fn).getDescribe().getLabel());
             }
             choicesByObject.put(objDesc.getName(), choices);
