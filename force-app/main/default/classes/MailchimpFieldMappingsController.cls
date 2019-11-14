@@ -83,29 +83,21 @@ public with sharing class MailchimpFieldMappingsController {
         private set;
     }
 
-    public SelectOption[] attrFieldTagChoices {
+    public SelectOption[] attrFieldTagOptions {
         get {
-            if (attrFieldTagChoices == null) {
-                attrFieldTagChoices = new List<SelectOption>();
-                for (String attrName : this.getAttrChoices()) {
-                    attrFieldTagChoices.add(
-                        new SelectOption('attr--' + attrName, attrName)
-                    );
-                }
-                Map<String, String> fieldChoices = this.getMergeFieldChoices();
-                for (String fieldName : fieldChoices.keySet()) {
-                    attrFieldTagChoices.add(new SelectOption(
-                        fieldName,
-                        fieldChoices.get(fieldName)
-                    ));
-                }
-                for (String tagName : this.getTagChoices()) {
-                    attrFieldTagChoices.add(
-                        new SelectOption('tag--' + tagName, tagName)
-                    );
-                }
+            if (attrFieldTagOptions == null) {
+                attrFieldTagOptions = new List<SelectOption>();
+                attrFieldTagOptions.addAll(
+                    optionsForChoices(getAttrChoices())
+                );
+                attrFieldTagOptions.addAll(
+                    optionsForChoices(getMergeFieldChoices())
+                );
+                attrFieldTagOptions.addAll(
+                    optionsForChoices(getTagChoices())
+                );
             }
-            return attrFieldTagChoices;
+            return attrFieldTagOptions;
         }
         private set;
     }
@@ -133,8 +125,8 @@ public with sharing class MailchimpFieldMappingsController {
         return JSON.serialize(this.getFieldsByObject());
     }
 
-    public String[] getAttrChoices() {
-        return new List<String>{
+    public Map<String, String> getAttrChoices() {
+        String[] attrs = new List<String>{
             'id',
             'email_address',
             'email_client',
@@ -150,6 +142,11 @@ public with sharing class MailchimpFieldMappingsController {
             'timestamp_signup',
             'vip'
         };
+        Map<String, String> choices = new Map<String, String>();
+        for (String attr : attrs) {
+            choices.put('attr--' + attr, attr);
+        }
+        return choices;
     }
 
     public Map<String, String> getMergeFieldChoices() {
@@ -170,8 +167,8 @@ public with sharing class MailchimpFieldMappingsController {
         return choices;
     }
 
-    public String[] getTagChoices() {
-        String[] choices = new List<String>();
+    public Map<String, String> getTagChoices() {
+        Map<String, String> choices = new Map<String, String>();
 
         MailchimpAPI mailchimp = new MailchimpAPI();
         HttpResponse resp = mailchimp.fetchTags();
@@ -182,28 +179,29 @@ public with sharing class MailchimpFieldMappingsController {
             (MailchimpAPI.TagsResponse)parser
                 .readValueAs(MailchimpAPI.TagsResponse.class);
         for (MailchimpAPI.Tag tag : body.segments) {
-            choices.add(tag.name);
+            choices.put('tag--' + tag.name, tag.name);
         }
 
         return choices;
     }
 
     public String getAttrFieldTagChoicesJSON() {
-        Map<String, String> attrChoices = new Map<String, String>();
-        for (String choice : this.getAttrChoices()) {
-            attrChoices.put('attr--' + choice, choice);
-        }
-
-        Map<String, String> tagChoices = new Map<String, String>();
-        for (String choice : this.getTagChoices()) {
-            tagChoices.put('tag--' + choice, choice);
-        }
-
         return JSON.serialize(new Map<String, Map<String, String>>{
-            'mcMemberAttrs' => attrChoices,
+            'mcMemberAttrs' => this.getAttrChoices(),
             'mcMergeFields' => this.getMergeFieldChoices(),
-            'mcTags' => tagChoices
+            'mcTags' => this.getTagChoices()
         });
+    }
+
+    private SelectOption[] optionsForChoices(Map<String, String> choices) {
+        SelectOption[] options = new List<SelectOption>();
+        for (String key : choices.keySet()) {
+            options.add(new SelectOption(
+                key,
+                choices.get(key)
+            ));
+        }
+        return options;
     }
 
     public PageReference createMapping() {

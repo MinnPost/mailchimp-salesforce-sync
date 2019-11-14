@@ -78,7 +78,7 @@
                         <td>
                             <apex:selectList id="mcAttrFieldTag"
                                     value="{!newMapping.mcAttrFieldTag}" size="1">
-                                <apex:selectOptions value="{!attrFieldTagChoices}" />
+                                <apex:selectOptions value="{!attrFieldTagOptions}" />
                             </apex:selectList>
                         </td>
 
