@@ -67,12 +67,10 @@ public with sharing class MCFieldMapping {
         mvMemberAttr.value = this.mcMemberAttr;
         md.values.add(mvMemberAttr);
 
-        if (this.direction == 'push') {
-            Metadata.CustomMetadataValue mvPushAs = new Metadata.CustomMetadataValue();
-            mvPushAs.field = 'Push_To_Mailchimp_As__c';
-            mvPushAs.value = this.mcPushAs;
-            md.values.add(mvPushAs);
-        }
+        Metadata.CustomMetadataValue mvPushAs = new Metadata.CustomMetadataValue();
+        mvPushAs.field = 'Push_To_Mailchimp_As__c';
+        mvPushAs.value = this.mcPushAs;
+        md.values.add(mvPushAs);
 
         Metadata.CustomMetadataValue mvDefaultVal = new Metadata.CustomMetadataValue();
         mvDefaultVal.field = 'Default_Value__c';

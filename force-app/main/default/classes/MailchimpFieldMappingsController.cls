@@ -142,14 +142,32 @@ public with sharing class MailchimpFieldMappingsController {
             'timestamp_signup',
             'vip'
         };
+
+        Set<String> mappedAttrs = new Set<String>();
+        for (MailchimpFieldMapping__mdt mapping : fieldMappings) {
+            if (mapping.Push_To_Mailchimp_As__c != null) continue;
+            mappedAttrs.add(mapping.Mailchimp_Member_Attribute__c);
+        }
+
         Map<String, String> choices = new Map<String, String>();
         for (String attr : attrs) {
+            if (mappedAttrs.contains(attr)) continue;
             choices.put('attr--' + attr, attr);
         }
         return choices;
     }
 
     public Map<String, String> getMergeFieldChoices() {
+        Set<String> mappedFields = new Set<String>();
+        for (MailchimpFieldMapping__mdt mapping : fieldMappings) {
+            if (mapping.Push_To_Mailchimp_As__c !=
+                MailchimpAPI.PUSH_AS_MERGE_FIELD)
+            {
+                continue;
+            }
+            mappedFields.add(mapping.Mailchimp_Merge_Field_Tag__c);
+        }
+
         Map<String, String> choices = new Map<String, String>();
 
         MailchimpAPI mailchimp = new MailchimpAPI();
@@ -161,6 +179,7 @@ public with sharing class MailchimpFieldMappingsController {
             (MailchimpAPI.MergeFieldsResponse)parser
                 .readValueAs(MailchimpAPI.MergeFieldsResponse.class);
         for (MailchimpAPI.MergeField mergeField : body.merge_fields) {
+            if (mappedFields.contains(mergeField.tag)) continue;
             choices.put('field--' + mergeField.tag, mergeField.name);
         }
 
@@ -168,6 +187,16 @@ public with sharing class MailchimpFieldMappingsController {
     }
 
     public Map<String, String> getTagChoices() {
+        Set<String> mappedTags = new Set<String>();
+        for (MailchimpFieldMapping__mdt mapping : fieldMappings) {
+            if (mapping.Push_To_Mailchimp_As__c !=
+                MailchimpAPI.PUSH_AS_TAG)
+            {
+                continue;
+            }
+            mappedTags.add(mapping.Mailchimp_Merge_Field_Tag__c);
+        }
+
         Map<String, String> choices = new Map<String, String>();
 
         MailchimpAPI mailchimp = new MailchimpAPI();
@@ -179,6 +208,7 @@ public with sharing class MailchimpFieldMappingsController {
             (MailchimpAPI.TagsResponse)parser
                 .readValueAs(MailchimpAPI.TagsResponse.class);
         for (MailchimpAPI.Tag tag : body.segments) {
+            if (mappedTags.contains(tag.name)) continue;
             choices.put('tag--' + tag.name, tag.name);
         }
 

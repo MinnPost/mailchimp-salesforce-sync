@@ -1,6 +1,6 @@
 public class MailchimpAPI {
-    static final String PUSH_AS_MERGE_FIELD = '*|MERGE|* Field';
-    static final String PUSH_AS_TAG = 'Tag';
+    public static final String PUSH_AS_MERGE_FIELD = '*|MERGE|* Field';
+    public static final String PUSH_AS_TAG = 'Tag';
 
     static Object getField(Contact c, String field, String lookup) {
         if (lookup != 'Contact') {
