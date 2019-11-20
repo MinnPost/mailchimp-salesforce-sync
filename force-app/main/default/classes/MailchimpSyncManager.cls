@@ -544,7 +544,7 @@ public with sharing class MailchimpSyncManager {
                     when '*|MERGE|* Field' {
                         c.put(
                             fieldMapping.Salesforce_Field_API_Name__c,
-                            member.get(fieldMapping.Mailchimp_Merge_Field_Tag__c)
+                            member.merge_fields.get(fieldMapping.Mailchimp_Merge_Field_Tag__c)
                         );
                     }
                     when 'Tag' {

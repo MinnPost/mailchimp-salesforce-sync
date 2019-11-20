@@ -79,9 +79,6 @@ public class MailchimpAPI {
                     return this.last_changed;
                 }
                 when else {
-                    if (merge_fields.containsKey(attrName)) {
-                        return merge_fields.get(attrName);
-                    }
                     throw new TypeException('Can\'t get unknown attribute ' + attrName);
                 }
             }
