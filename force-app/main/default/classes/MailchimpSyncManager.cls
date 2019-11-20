@@ -534,6 +534,9 @@ public with sharing class MailchimpSyncManager {
                 Email=member.email_address,
                 MailchimpEmailHash__c=member.ID
             );
+            if (member.status != 'subscribed') {
+                c.HasOptedOutOfEmail = true;
+            }
             for (MailchimpFieldMapping__mdt fieldMapping : this.fieldMappings) {
                 if (fieldMapping.Direction__c != 'pull') continue;
 
