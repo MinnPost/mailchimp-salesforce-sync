@@ -22,7 +22,7 @@ global with sharing class MailchimpPullJob implements Queueable, Database.Allows
 
         if (result == MailchimpSyncManager.PullResult.MORE_TO_PULL) {
             ID jobID = System.enqueueJob(
-                new MailchimpPullJob(this.count, this.offset + this.count)
+                new MailchimpPullJob(this.count, this.offset + this.count, this.sinceLastChanged)
             );
             System.debug('Queued another pull: ' + jobID);
             return;
