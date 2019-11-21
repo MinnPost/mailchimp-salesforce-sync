@@ -40,7 +40,10 @@ private class MailchimpSyncManagerTest {
                 newSub.status = 'subscribed';
                 newSub.member_rating = 5;
                 newSub.last_changed = Datetime.newInstanceGmt(1942, 4, 24, 12, 0, 0);
-                newSub.merge_fields = new Map<String, String>{};
+                newSub.merge_fields = new Map<String, String>{
+                    'FNAME' => 'Barbra',
+                    'LNAME' => 'Streisand'
+                };
                 newSub.interests = new Map<String, Boolean>{};
 
                 MailchimpSyncManager.MembersResponse mr =
@@ -648,6 +651,18 @@ private class MailchimpSyncManagerTest {
             ', Actual: ' + status.LastPushed__c
         );
 
+        MailchimpSyncStatus__c[] newStatuses =
+            [SELECT Email__c, LastChanged__c, LastPushed__c, NeedsSync__c
+             FROM MailchimpSyncStatus__c
+             WHERE Email__c = 'babs@barbrastreisand.com'
+             LIMIT 1];
+        System.assert(!newStatuses.isEmpty());
+        System.assert(newStatuses[0].NeedsSync__c);
+        System.assertEquals(
+            Datetime.newInstanceGmt(1942, 4, 24, 12, 0, 0),
+            newStatuses[0].LastChanged__c
+        );
+
         Test.stopTest();
     }
 
@@ -674,6 +689,18 @@ private class MailchimpSyncManagerTest {
             delta < maxDelta,
             'Expected: ≈ ' + (Datetime.now() - 1) +
             ', Actual: ' + status.LastPushed__c
+        );
+
+        MailchimpSyncStatus__c[] newStatuses =
+            [SELECT Email__c, LastChanged__c, LastPushed__c, NeedsSync__c
+             FROM MailchimpSyncStatus__c
+             WHERE Email__c = 'babs@barbrastreisand.com'
+             LIMIT 1];
+        System.assert(!newStatuses.isEmpty());
+        System.assert(newStatuses[0].NeedsSync__c);
+        System.assertEquals(
+            Datetime.newInstanceGmt(1942, 4, 24, 12, 0, 0),
+            newStatuses[0].LastChanged__c
         );
 
         Test.stopTest();

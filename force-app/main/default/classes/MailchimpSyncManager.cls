@@ -572,7 +572,8 @@ public with sharing class MailchimpSyncManager {
 
         for (Database.Error err : result.getErrors()) {
             if (err.getStatusCode() == StatusCode.REQUIRED_FIELD_MISSING &&
-                err.getFields().contains('Last Name')) {
+                (err.getFields().contains('LastName') ||
+                 err.getFields().contains('Last Name'))) {
                 return true;
             }
         }
