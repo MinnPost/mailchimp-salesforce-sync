@@ -657,6 +657,7 @@ public with sharing class MailchimpSyncManager {
             );
 
             if (upsertResult.isSuccess()) {
+                c.Id = upsertResult.getId();
                 status.Contact__c = upsertResult.getId();
                 statuses.add(status);
                 continue;
@@ -745,6 +746,7 @@ public with sharing class MailchimpSyncManager {
             Contact c = contactsToInsert[i];
             MailchimpSyncStatus__c status = statusesToInsert[i];
             if (insertResult.isSuccess()) {
+                c.Id = insertResult.getId();
                 status.Contact__c = insertResult.getId();
                 statuses.add(status);
                 continue;
@@ -802,17 +804,17 @@ public with sharing class MailchimpSyncManager {
 
     private MailchimpSubscription__c[] collectSubscriptions(
         MailchimpAPI.Subscriber[] members,
+        Contact[] contacts,
         Set<String> contactErrors
     ) {
         MailchimpSubscription__c[] subscriptions = new List<MailchimpSubscription__c>();
 
-        for (MailchimpAPI.Subscriber member : members) {
+        for (Integer i = 0; i < members.size(); ++i) {
+            MailchimpAPI.Subscriber member = members[i];
             if (contactErrors.contains(member.email_address)) continue;
 
-            // Create reference versions of the contact we can use to update subscriptions
-            Contact contactRef = new Contact(
-                MailchimpEmailHash__c=member.ID
-            );
+            // Create reference version of the contact we can use to update subscriptions
+            Contact contactRef = new Contact(Id=contacts[i].Id);
 
             for (String interestID : member.interests.keySet()) {
                 Interest__c interestRef = new Interest__c(InterestID__c=interestID);
@@ -887,6 +889,7 @@ public with sharing class MailchimpSyncManager {
 
         MailchimpSubscription__c[] subscriptions = this.collectSubscriptions(
             memResult.members,
+            contacts,
             contactErrors.keySet()
         );
         Mailchimp_Sync_Error__c[] subscriptionErrors =
