@@ -668,7 +668,8 @@ public with sharing class MailchimpSyncManager {
                 String email = member.email_address;
                 System.debug('trying to find contact by alternate address ' + email);
                 Email__c[] altEmails =
-                    [SELECT Id, Primary_Contact__c FROM Email__c
+                    [SELECT Id, Primary_Contact__r.Id, Primary_Contact__r.Email
+                     FROM Email__c
                      WHERE Email_Address__c = :email];
                 if (altEmails.isEmpty()) {
                     System.debug(email + ' not found as alternate address, creating new contact');
@@ -678,11 +679,9 @@ public with sharing class MailchimpSyncManager {
                     continue;
                 }
 
-                // c.Email is the incoming one from Mailchimp -- this will
-                // (probably?) update the Salesforce contact's email address
-                // (but should keep previous ones as associated e-mails)
-                // TODO: Make it not change the SF contact's primary e-mail
-                c.Id = altEmails[0].Primary_Contact__c;
+                // Don't change the SF contact's primary e-mail
+                c.Id = altEmails[0].Primary_Contact__r.Id;
+                c.Email = altEmails[0].Primary_Contact__r.Email;
                 contactsToUpdate.add(c);
                 statusesToUpdate.add(status);
 
