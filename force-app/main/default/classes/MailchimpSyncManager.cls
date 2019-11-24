@@ -357,7 +357,10 @@ public with sharing class MailchimpSyncManager {
 
     public void updateBatches() {
         Mailchimp_Batch_Operation__c[] batches = this.unfinishedBatches();
+        this.updateBatches(batches);
+    }
 
+    public void updateBatches(Mailchimp_Batch_Operation__c[] batches) {
         Mailchimp_Sync_Error__c[] errors = new List<Mailchimp_Sync_Error__c>();
         Mailchimp_Batch_Operation__c[] updated = new List<Mailchimp_Batch_Operation__c>();
         for (Mailchimp_Batch_Operation__c batch : batches) {
@@ -401,7 +404,6 @@ public with sharing class MailchimpSyncManager {
         return result;
     }
 
-    @future
     public static void updateContactsInBatches(String[] batchIDs) {
         Datetime lastSyncedAt = Datetime.now();
         System.debug('Begin updating contacts for finished batches: ' + batchIDs);

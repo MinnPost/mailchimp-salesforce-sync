@@ -84,7 +84,8 @@ public with sharing class MailchimpSyncController {
                              'MailchimpPullInterestsJob',
                              'MailchimpPullJob',
                              'MailchimpPushJob',
-                             'MailchimpSyncJob'
+                             'MailchimpSyncJob',
+                             'MailchimpUpdateBatchesJob'
                          )
                      )
                      ORDER BY CreatedDate DESC LIMIT 10];
