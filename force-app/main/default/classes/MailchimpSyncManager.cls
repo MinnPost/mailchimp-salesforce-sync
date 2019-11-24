@@ -635,13 +635,16 @@ public with sharing class MailchimpSyncManager {
     private Map<String, Mailchimp_Sync_Error__c> upsertContacts(MailchimpAPI.Subscriber[] members, Contact[] contacts) {
         Map<String, Mailchimp_Sync_Error__c> contactErrors = new Map<String, Mailchimp_Sync_Error__c>();
         MailchimpSyncStatus__c[] statuses = new List<MailchimpSyncStatus__c>();
+
+        Contact[] contactsToInsert = new List<Contact>();
         MailchimpSyncStatus__c[] statusesToInsert = new List<MailchimpSyncStatus__c>();
+        Contact[] contactsToUpdate = new List<Contact>();
+        MailchimpSyncStatus__c[] statusesToUpdate = new List<MailchimpSyncStatus__c>();
 
         // Try to upsert without first/last name, check for the appropriate error.
         // New records will come back with a result with isCreated() == TRUE,
         // and a REQUIRED_FIELD_MISSING error on LastName.
         Database.UpsertResult[] results = Database.upsert(contacts, Contact.Fields.Email, false);
-        Contact[] contactsToInsert = new List<Contact>();
         for (Integer i = 0; i < results.size(); ++i) {
             Database.UpsertResult upsertResult = results[i];
             Contact c = contacts[i];
@@ -656,10 +659,31 @@ public with sharing class MailchimpSyncManager {
                 statuses.add(status);
                 continue;
             }
+
             if (this.shouldRetry(upsertResult)) {
-                this.addSyncFields(c, member);
-                contactsToInsert.add(c);
-                statusesToInsert.add(status);
+                // Search for the contact by an alternate e-mail address. If
+                // we find them, update that contact record.
+                String email = member.email_address;
+                System.debug('trying to find contact by alternate address ' + email);
+                Email__c[] altEmails =
+                    [SELECT Id, Primary_Contact__c FROM Email__c
+                     WHERE Email_Address__c = :email];
+                if (altEmails.isEmpty()) {
+                    System.debug(email + ' not found as alternate address, creating new contact');
+                    this.addSyncFields(c, member);
+                    contactsToInsert.add(c);
+                    statusesToInsert.add(status);
+                    continue;
+                }
+
+                // c.Email is the incoming one from Mailchimp -- this will
+                // (probably?) update the Salesforce contact's email address
+                // (but should keep previous ones as associated e-mails)
+                // TODO: Make it not change the SF contact's primary e-mail
+                c.Id = altEmails[0].Primary_Contact__c;
+                contactsToUpdate.add(c);
+                statusesToUpdate.add(status);
+
                 continue;
             }
 
@@ -677,6 +701,37 @@ public with sharing class MailchimpSyncManager {
                         Stage__c=STAGE_FETCH_MEMBERS,
                         Contact__r=contactRef,
                         Title__c='Error while updating contact ' + email,
+                        Detail__c=err.getStatusCode() + ': ' + err.getMessage()
+                    )
+                );
+            }
+        }
+
+        Database.SaveResult[] updateResults = Database.update(contactsToUpdate, false);
+        for (Integer i = 0; i < updateResults.size(); ++i) {
+            Database.SaveResult updateResult = updateResults[i];
+            Contact c = contactsToUpdate[i];
+            MailchimpSyncStatus__c status = statusesToUpdate[i];
+            if (updateResult.isSuccess()) {
+                status.Contact__c = updateResult.getId();
+                statuses.add(status);
+                continue;
+            }
+
+            System.debug(LoggingLevel.ERROR, 'Error(s) updating contact.');
+            String email = c.Email;
+            Contact contactRef = new Contact(Id=c.Id);
+            for (Database.Error err : updateResult.getErrors()) {
+                System.debug(
+                    LoggingLevel.ERROR,
+                    err.getStatusCode() + ': ' + err.getMessage()
+                );
+                contactErrors.put(
+                    email,
+                    new Mailchimp_Sync_Error__c(
+                        Stage__c=STAGE_FETCH_MEMBERS,
+                        Contact__r=contactRef,
+                        Title__c='Error while updating contact by alternate e-mail ' + email,
                         Detail__c=err.getStatusCode() + ': ' + err.getMessage()
                     )
                 );
@@ -832,7 +887,24 @@ public with sharing class MailchimpSyncManager {
         );
         Mailchimp_Sync_Error__c[] subscriptionErrors =
             this.upsertSubscriptions(subscriptions);
-        insert subscriptionErrors;
+
+        // FIXME: This may not insert errors if the MailchimpEmailHash__c field
+        // doesn't exist on any contact. For now we at least log the failure.
+        Database.SaveResult[] errInsResults =
+            Database.insert(subscriptionErrors, false);
+        for (Integer i = 0; i < errInsResults.size(); ++i) {
+            Database.SaveResult errInsResult = errInsResults[i];
+            if (errInsResult.isSuccess()) continue;
+            System.debug(LoggingLevel.ERROR, 'Error(s) inserting error record!');
+            for (Database.Error err : errInsResult.getErrors()) {
+                System.debug(
+                    LoggingLevel.ERROR,
+                    err.getStatusCode() + ': ' + err.getMessage()
+                );
+            }
+            System.debug(LoggingLevel.ERROR, 'Original error was:');
+            System.debug(LoggingLevel.ERROR, subscriptionErrors[i]);
+        }
 
         if (memResult.totalItems > count + offset) {
             return PullResult.MORE_TO_PULL;

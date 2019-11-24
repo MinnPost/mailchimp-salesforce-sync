@@ -46,10 +46,19 @@ private class MailchimpSyncManagerTest {
                 };
                 newSub.interests = new Map<String, Boolean>{};
 
+                MailchimpAPI.Subscriber altSub = new MailchimpAPI.Subscriber();
+                altSub.id = '48f31063a111868b5835011d541985cb';
+                altSub.email_address = 'itsme@example.com';
+                altSub.status = 'subscribed';
+                altSub.member_rating = 2;
+                altSub.last_changed = Datetime.newInstanceGmt(2019, 9, 17, 10, 55, 9);
+                altSub.merge_fields = new Map<String, String>{};
+                altSub.interests = new Map<String, Boolean>{};
+
                 MailchimpSyncManager.MembersResponse mr =
                     new MailchimpSyncManager.MembersResponse();
-                mr.members = new List<MailchimpAPI.Subscriber>{ sub, newSub };
-                mr.total_items = 2;
+                mr.members = new List<MailchimpAPI.Subscriber>{ sub, newSub, altSub };
+                mr.total_items = 3;
                 resp.setBody(JSON.serialize(mr));
             }
             else if (
@@ -171,9 +180,32 @@ private class MailchimpSyncManagerTest {
                 FirstName='Fujiwara',
                 LastName='Morimoto',
                 Email='mfuji@example.co.jp'
+            ),
+            new Contact(
+                FirstName='Anonymous',
+                LastName='Bosch',
+                Email='notme@example.com'
             )
         };
         Database.SaveResult[] results = Database.insert(testContacts);
+
+        Email__c testAltEmail = new Email__c(
+            Email_Address__c='itsme@example.com'
+        );
+        Email__c[] testAltEmails = new List<Email__c>{
+            null,
+            null,
+            null,
+            null,
+            null,
+            testAltEmail
+        };
+
+        // A day ago is less than the contact's LastModifiedDate
+        Datetime yesterday = (Datetime.now() - 1);
+        // A day from now is greater than the contact's
+        // LastModifiedDate
+        Datetime tomorrow = Datetime.now() + 1;
 
         MailchimpSyncStatus__c[] testStatuses = new List<MailchimpSyncStatus__c>{
             // Pulled but never pushed back
@@ -189,17 +221,14 @@ private class MailchimpSyncManagerTest {
             new MailchimpSyncStatus__c(
                 Email__c='mohabdi@example.com',
                 LastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
-                // A day from now is greater than the contact's
-                // LastModifiedDate
-                LastPushed__c=(Datetime.now() + 1)
+                LastPushed__c=tomorrow
             ),
 
             // Pulled but not pushed back yet
             new MailchimpSyncStatus__c(
                 Email__c='helen1604@example.com',
                 LastChanged__c=Datetime.newInstanceGmt(2019, 9, 12, 5, 5, 5),
-                // A day ago is less than the contact's LastModifiedDate
-                LastPushed__c=(Datetime.now() - 1)
+                LastPushed__c=yesterday
             ),
 
             // Synced but tag operation still in progress, should show up in count
@@ -207,20 +236,35 @@ private class MailchimpSyncManagerTest {
                 Email__c='mfuji@example.co.jp',
                 BatchID__c='rA45kKQWre',
                 LastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
-                // A day from now is greater than the contact's
-                // LastModifiedDate
-                LastPushed__c=(Datetime.now() + 1)
+                LastPushed__c=tomorrow
+            ),
+
+            // Mailchimp e-mail is in Consolidated Email, update
+            new MailchimpSyncStatus__c(
+                Email__c='itsme@example.com',
+                LastChanged__c=Datetime.newInstanceGmt(2019, 9, 10, 9, 9, 9),
+                LastPushed__c=tomorrow
             )
         };
 
+        Email__c[] emailsToInsert = new List<Email__c>();
         MailchimpSyncStatus__c[] statusesToInsert = new List<MailchimpSyncStatus__c>();
         for (Integer i = 0; i < results.size(); ++i) {
-            MailchimpSyncStatus__c status = testStatuses[i];
-            if (status == null) continue;
+            Id contactId = results[i].getId();
 
-            status.Contact__c = results[i].getId();
-            statusesToInsert.add(status);
+            Email__c altEmail = testAltEmails[i];
+            if (altEmail != null) {
+                altEmail.Primary_Contact__c = contactId;
+                emailsToInsert.add(altEmail);
+            }
+
+            MailchimpSyncStatus__c status = testStatuses[i];
+            if (status != null) {
+                status.Contact__c = contactId;
+                statusesToInsert.add(status);
+            }
         }
+        insert emailsToInsert;
         insert statusesToInsert;
         for (Contact c : testContacts) {
             c.recalculateFormulas();
@@ -638,7 +682,7 @@ private class MailchimpSyncManagerTest {
              FROM MailchimpSyncStatus__c
              WHERE Email__c = 'helen1604@example.com'
              LIMIT 1];
-        System.assertEquals(true, status.NeedsSync__c);
+        System.assert(status.NeedsSync__c);
         System.assertEquals(
             Datetime.newInstanceGmt(2019, 9, 17, 10, 55, 9),
             status.LastChanged__c
@@ -652,7 +696,7 @@ private class MailchimpSyncManagerTest {
         );
 
         MailchimpSyncStatus__c[] newStatuses =
-            [SELECT Email__c, LastChanged__c, LastPushed__c, NeedsSync__c
+            [SELECT Email__c, LastChanged__c, NeedsSync__c
              FROM MailchimpSyncStatus__c
              WHERE Email__c = 'babs@barbrastreisand.com'
              LIMIT 1];
@@ -662,6 +706,18 @@ private class MailchimpSyncManagerTest {
             Datetime.newInstanceGmt(1942, 4, 24, 12, 0, 0),
             newStatuses[0].LastChanged__c
         );
+
+        MailchimpSyncStatus__c[] altEmailStatuses =
+            [SELECT Email__c, LastChanged__c, Contact__r.MailchimpMemberRating__c
+             FROM MailchimpSyncStatus__c
+             WHERE Email__c = 'itsme@example.com'
+             LIMIT 1];
+        System.assert(!altEmailStatuses.isEmpty());
+        System.assertEquals(
+            Datetime.newInstanceGmt(2019, 9, 17, 10, 55, 9),
+            altEmailStatuses[0].LastChanged__c
+        );
+        System.assertEquals(2, altEmailStatuses[0].Contact__r.MailchimpMemberRating__c);
 
         Test.stopTest();
     }
