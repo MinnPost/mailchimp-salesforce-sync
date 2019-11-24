@@ -305,9 +305,15 @@ public with sharing class MailchimpSyncManager {
         );
         for (Database.UpsertResult result : results) {
             if (result.isSuccess()) continue;
-            System.debug('Error(s) updating timestamp on synced records.');
+            System.debug(
+                LoggingLevel.ERROR,
+                'Error(s) updating timestamp on synced records.'
+            );
             for (Database.Error err : result.getErrors()) {
-                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                System.debug(
+                    LoggingLevel.ERROR,
+                    err.getStatusCode() + ': ' + err.getMessage()
+                );
             }
         }
     }
@@ -448,9 +454,15 @@ public with sharing class MailchimpSyncManager {
             Database.UpsertResult catResult =
                 Database.upsert(category, InterestCategory__c.Fields.CategoryID__c);
             if (!catResult.isSuccess()) {
-                System.debug('Error(s) creating/updating interest category.');
+                System.debug(
+                    LoggingLevel.ERROR,
+                    'Error(s) creating/updating interest category.'
+                );
                 for (Database.Error err : catResult.getErrors()) {
-                    System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                    System.debug(
+                        LoggingLevel.ERROR,
+                        err.getStatusCode() + ': ' + err.getMessage()
+                    );
                     errors.add(new Mailchimp_Sync_Error__c(
                         Stage__c=STAGE_FETCH_INTERESTS,
                         Title__c='Error while creating/updating interest category ' + c.title,
@@ -476,9 +488,15 @@ public with sharing class MailchimpSyncManager {
             for (Database.UpsertResult result : results) {
                 if (result.isSuccess()) continue;
 
-                System.debug('Error(s) creating/updating interest.');
+                System.debug(
+                    LoggingLevel.ERROR,
+                    'Error(s) creating/updating interest.'
+                );
                 for (Database.Error err : result.getErrors()) {
-                    System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                    System.debug(
+                        LoggingLevel.ERROR,
+                        err.getStatusCode() + ': ' + err.getMessage()
+                    );
                     errors.add(new Mailchimp_Sync_Error__c(
                         Stage__c=STAGE_FETCH_INTERESTS,
                         Title__c='Error while creating/updating interests in category ' + c.title,
@@ -645,11 +663,14 @@ public with sharing class MailchimpSyncManager {
                 continue;
             }
 
-            System.debug('Error(s) updating contact.');
+            System.debug(LoggingLevel.ERROR, 'Error(s) updating contact.');
             String email = c.Email;
             Contact contactRef = new Contact(MailchimpEmailHash__c=member.ID);
             for (Database.Error err : upsertResult.getErrors()) {
-                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                System.debug(
+                    LoggingLevel.ERROR,
+                    err.getStatusCode() + ': ' + err.getMessage()
+                );
                 contactErrors.put(
                     email,
                     new Mailchimp_Sync_Error__c(
@@ -673,9 +694,12 @@ public with sharing class MailchimpSyncManager {
                 continue;
             }
 
-            System.debug('Error(s) creating contact.');
+            System.debug(LoggingLevel.ERROR, 'Error(s) creating contact.');
             for (Database.Error err : insertResult.getErrors()) {
-                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                System.debug(
+                    LoggingLevel.ERROR,
+                    err.getStatusCode() + ': ' + err.getMessage()
+                );
                 contactErrors.put(
                     c.Email,
                     new Mailchimp_Sync_Error__c(
@@ -692,9 +716,12 @@ public with sharing class MailchimpSyncManager {
         );
         for (Database.UpsertResult result : statusResults) {
             if (result.isSuccess()) continue;
-            System.debug('Error(s) updating timestamp on pulled records.');
+            System.debug(LoggingLevel.ERROR, 'Error(s) updating timestamp on pulled records.');
             for (Database.Error err : result.getErrors()) {
-                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                System.debug(
+                    LoggingLevel.ERROR,
+                    err.getStatusCode() + ': ' + err.getMessage()
+                );
             }
         }
 
@@ -703,9 +730,12 @@ public with sharing class MailchimpSyncManager {
         );
         for (Database.SaveResult result : errResults) {
             if (result.isSuccess()) continue;
-            System.debug('Error(s) inserting error record!');
+            System.debug(LoggingLevel.ERROR, 'Error(s) inserting error record!');
             for (Database.Error err : result.getErrors()) {
-                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                System.debug(
+                    LoggingLevel.ERROR,
+                    err.getStatusCode() + ': ' + err.getMessage()
+                );
             }
         }
         return contactErrors;
@@ -751,9 +781,12 @@ public with sharing class MailchimpSyncManager {
             MailchimpSubscription__c subscription = subscriptions[i];
             if (result.isSuccess()) continue;
 
-            System.debug('Error(s) updating subscriptions.');
+            System.debug(LoggingLevel.ERROR, 'Error(s) updating subscriptions.');
             for (Database.Error err : result.getErrors()) {
-                System.debug(err.getStatusCode() + ': ' + err.getMessage());
+                System.debug(
+                    LoggingLevel.ERROR,
+                    err.getStatusCode() + ': ' + err.getMessage()
+                );
                 subscriptionErrors.add(new Mailchimp_Sync_Error__c(
                     Stage__c=STAGE_UPDATE_SUBSCRIPTIONS,
                     Contact__r=subscription.Contact__r,
