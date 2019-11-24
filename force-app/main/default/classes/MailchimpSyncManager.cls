@@ -783,7 +783,8 @@ public with sharing class MailchimpSyncManager {
         Database.SaveResult[] errResults = Database.insert(
             contactErrors.values(), false
         );
-        for (Database.SaveResult result : errResults) {
+        for (Integer i = 0; i < errResults.size(); ++i) {
+            Database.SaveResult result = errResults[i];
             if (result.isSuccess()) continue;
             System.debug(LoggingLevel.ERROR, 'Error(s) inserting error record!');
             for (Database.Error err : result.getErrors()) {
@@ -792,6 +793,8 @@ public with sharing class MailchimpSyncManager {
                     err.getStatusCode() + ': ' + err.getMessage()
                 );
             }
+            System.debug(LoggingLevel.ERROR, 'Original error was:');
+            System.debug(LoggingLevel.ERROR, contactErrors.values()[i]);
         }
         return contactErrors;
     }
