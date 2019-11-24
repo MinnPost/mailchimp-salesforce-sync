@@ -51,10 +51,12 @@ public with sharing class MailchimpSyncController {
     public List<Mailchimp_Sync_Error__c> recentSyncErrors {
         get {
             if (recentSyncErrors == null) {
+                Datetime oneWeekAgo = Datetime.now() - 7;
                 recentSyncErrors =
                     [SELECT Id, Name, CreatedDate, Stage__c, Contact__c,
                             Title__c, Detail__c
                      FROM Mailchimp_Sync_Error__c
+                     WHERE CreatedDate > :oneWeekAgo
                      ORDER BY CreatedDate DESC LIMIT 20];
             }
             return recentSyncErrors;
