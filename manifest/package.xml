@@ -40,5 +40,9 @@
         <members>*</members>
         <name>CustomApplication</name>
     </types>
+    <types>
+        <members>*</members>
+        <name>PermissionSet</name>
+    </types>
     <version>45.0</version>
 </Package>
