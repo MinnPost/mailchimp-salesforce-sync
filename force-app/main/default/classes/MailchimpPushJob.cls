@@ -1,3 +1,8 @@
+// Copyright 2019 MinnPost <tech@minnpost.com>
+//
+// This software may be used and distributed according to the terms of the
+// GNU General Public License version 2 or any later version.
+
 global with sharing class MailchimpPushJob implements Database.Batchable<SObject>, Database.AllowsCallouts {
     global Database.QueryLocator start(Database.BatchableContext context) {
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();

@@ -1,3 +1,8 @@
+// Copyright 2019 MinnPost <tech@minnpost.com>
+//
+// This software may be used and distributed according to the terms of the
+// GNU General Public License version 2 or any later version.
+
 global with sharing class MailchimpPullJob implements Queueable, Database.AllowsCallouts {
     public Integer count = 200;
     public Integer offset = 0;

@@ -1,3 +1,8 @@
+// Copyright 2019 MinnPost <tech@minnpost.com>
+//
+// This software may be used and distributed according to the terms of the
+// GNU General Public License version 2 or any later version.
+
 public with sharing class MailchimpSyncManager {
     static final String STAGE_FETCH_INTERESTS = '1 - Fetch interests from Mailchimp';
     static final String STAGE_FETCH_MEMBERS = '2 - Fetch contacts from Mailchimp';

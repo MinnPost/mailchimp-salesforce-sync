@@ -1,3 +1,8 @@
+// Copyright 2019 MinnPost <tech@minnpost.com>
+//
+// This software may be used and distributed according to the terms of the
+// GNU General Public License version 2 or any later version.
+
 public class MailchimpAPI {
     public static final String PUSH_AS_MERGE_FIELD = '*|MERGE|* Field';
     public static final String PUSH_AS_TAG = 'Tag';
