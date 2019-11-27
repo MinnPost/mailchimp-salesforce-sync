@@ -841,15 +841,12 @@ public with sharing class MailchimpSyncManager {
             MailchimpAPI.Subscriber member = members[i];
             if (contactErrors.contains(member.email_address)) continue;
 
-            // Create reference version of the contact we can use to update subscriptions
-            Contact contactRef = new Contact(Id=contacts[i].Id);
-
             for (String interestID : member.interests.keySet()) {
                 Interest__c interestRef = new Interest__c(InterestID__c=interestID);
                 MailchimpSubscription__c sub = new MailchimpSubscription__c(
                     Name=member.email_address + ' ' + interestID,
                     SubscriptionKey__c=member.ID + '-' + interestID,
-                    Contact__r=contactRef,
+                    Contact__c=contacts[i].Id,
                     Interest__r=interestRef,
                     Subscribed__c=member.interests.get(interestID)
                 );
@@ -878,7 +875,7 @@ public with sharing class MailchimpSyncManager {
                 );
                 subscriptionErrors.add(new Mailchimp_Sync_Error__c(
                     Stage__c=STAGE_UPDATE_SUBSCRIPTIONS,
-                    Contact__r=subscription.Contact__r,
+                    Contact__c=subscription.Contact__c,
                     Title__c='Error while updating subscription ' + subscription.Name,
                     Detail__c=err.getStatusCode() + ': ' + err.getMessage()
                 ));
