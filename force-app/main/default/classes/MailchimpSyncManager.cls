@@ -242,7 +242,16 @@ public with sharing class MailchimpSyncManager {
         if (result.isError()) {
             return null;
         }
-        insert batch;
+        Database.SaveResult insertResult = Database.insert(batch, false);
+        if (!insertResult.isSuccess()) {
+            System.debug(LoggingLevel.ERROR, 'Error saving batch response ' + batch);
+            for (Database.Error err : insertResult.getErrors()) {
+                System.debug(
+                    LoggingLevel.ERROR,
+                    err.getStatusCode() + ': ' + err.getMessage()
+                );
+            }
+        }
         return batch;
     }
 
@@ -377,7 +386,17 @@ public with sharing class MailchimpSyncManager {
             updated.add(batch);
         }
         insert errors;
-        update updated;
+        Database.SaveResult[] updateResults = Database.update(updated, false);
+        for (Database.SaveResult updateResult : updateResults) {
+            if (updateResult.isSuccess()) continue;
+            System.debug(LoggingLevel.ERROR, 'Error updating batch:');
+            for (Database.Error err : updateResult.getErrors()) {
+                System.debug(
+                    LoggingLevel.ERROR,
+                    err.getStatusCode() + ': ' + err.getMessage()
+                );
+            }
+        }
         String[] batchIDsForContactUpdate = new List<String>();
         for (Mailchimp_Batch_Operation__c batch : updated) {
             if (batch.Status__c == 'finished') {
@@ -532,6 +551,10 @@ public with sharing class MailchimpSyncManager {
         try {
             MailchimpAPI.InterestCategoriesResponse categoriesResp =
                 (MailchimpAPI.InterestCategoriesResponse)parser.readValueAs(MailchimpAPI.InterestCategoriesResponse.class);
+            if (categoriesResp.categories == null) {
+                System.debug(LoggingLevel.INFO, 'No interest categories found');
+                return;
+            }
 
             for (MailchimpAPI.InterestCategory category : categoriesResp.categories) {
                 category.interests = this.pullInterestsInCategory(category.id);
@@ -886,6 +909,10 @@ public with sharing class MailchimpSyncManager {
         if (memResult.isError()) {
             insert memResult.requestError;
             return PullResult.ERROR;
+        }
+        if (memResult.members == null) {
+            System.debug(LoggingLevel.INFO, 'No members to pull');
+            return PullResult.DONE;
         }
 
         Contact[] contacts = this.collectContacts(memResult.members);

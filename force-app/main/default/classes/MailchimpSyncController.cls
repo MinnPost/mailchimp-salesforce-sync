@@ -171,6 +171,8 @@ public with sharing class MailchimpSyncController {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
 
+        if (Test.isRunningTest()) return redirect;
+
         System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(200, 0)));
 
         return redirect;
@@ -179,6 +181,8 @@ public with sharing class MailchimpSyncController {
     public PageReference syncAllContacts() {
         PageReference redirect = ApexPages.currentPage();
         redirect.setRedirect(true);
+
+        if (Test.isRunningTest()) return redirect;
 
         System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(200, 0, false)));
 

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Contact_email</label>
+    <protected>false</protected>
+    <values>
+        <field>Default_Value__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>Direction__c</field>
+        <value xsi:type="xsd:string">sync</value>
+    </values>
+    <values>
+        <field>Mailchimp_Member_Attribute__c</field>
+        <value xsi:type="xsd:string">email_address</value>
+    </values>
+    <values>
+        <field>Mailchimp_Merge_Field_Tag__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>Push_To_Mailchimp_As__c</field>
+        <value xsi:nil="true"/>
+    </values>
+    <values>
+        <field>Salesforce_Field_API_Name__c</field>
+        <value xsi:type="xsd:string">email</value>
+    </values>
+    <values>
+        <field>Salesforce_Object_API_Name__c</field>
+        <value xsi:type="xsd:string">Contact</value>
+    </values>
+</CustomMetadata>

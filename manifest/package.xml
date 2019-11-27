@@ -41,6 +41,12 @@
         <name>CustomApplication</name>
     </types>
     <types>
+        <members>MailchimpFieldMapping.Contact_id</members>
+        <members>MailchimpFieldMapping.Contact_email</members>
+        <members>MailchimpFieldMapping.Contact_mailchimpemailhash</members>
+        <name>CustomMetadata</name>
+    </types>
+    <types>
         <members>*</members>
         <name>PermissionSet</name>
     </types>
