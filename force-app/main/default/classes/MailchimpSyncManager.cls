@@ -666,6 +666,7 @@ public with sharing class MailchimpSyncManager {
         Map<String, Mailchimp_Sync_Error__c> contactErrors = new Map<String, Mailchimp_Sync_Error__c>();
         MailchimpSyncStatus__c[] statuses = new List<MailchimpSyncStatus__c>();
 
+        Set<Id> seenContactIds = new Set<Id>();
         Contact[] contactsToInsert = new List<Contact>();
         MailchimpSyncStatus__c[] statusesToInsert = new List<MailchimpSyncStatus__c>();
         Contact[] contactsToUpdate = new List<Contact>();
@@ -685,8 +686,10 @@ public with sharing class MailchimpSyncManager {
             );
 
             if (upsertResult.isSuccess()) {
-                c.Id = upsertResult.getId();
-                status.Contact__c = upsertResult.getId();
+                Id contactId = upsertResult.getId();
+                c.Id = contactId;
+                seenContactIds.add(contactId);
+                status.Contact__c = contactId;
                 statuses.add(status);
                 continue;
             }
@@ -708,8 +711,15 @@ public with sharing class MailchimpSyncManager {
                     continue;
                 }
 
+                Id contactId = altEmails[0].Primary_Contact__r.Id;
+
+                // Don't update contact if we already upserted them under a
+                // different address
+                if (seenContactIds.contains(contactId)) continue;
+                seenContactIds.add(contactId);
+
                 // Don't change the SF contact's primary e-mail
-                c.Id = altEmails[0].Primary_Contact__r.Id;
+                c.Id = contactId;
                 c.Email = altEmails[0].Primary_Contact__r.Email;
                 contactsToUpdate.add(c);
                 statusesToUpdate.add(status);
