@@ -280,7 +280,7 @@ public class MailchimpAPI {
         }
     }
 
-    public HttpResponse pushContactFields(Contact[] contacts, MailchimpFieldMapping__mdt[] fieldMappings) {
+    public HttpResponse pushContactFields(Map<String, Contact> contacts, MailchimpFieldMapping__mdt[] fieldMappings) {
         // Sync to Mailchimp using bulk-add endpoint
         // - what about deletes? Unlikely that a contact would ever be removed
         //   from Salesforce -- but contacts can be merged
@@ -292,9 +292,12 @@ public class MailchimpAPI {
         body.writeStartObject();
         body.writeFieldName('members');
         body.writeStartArray();
-        for (Contact c : contacts) {
+
+        for (String email : contacts.keySet()) {
+            Contact c = contacts.get(email);
+
             body.writeStartObject();
-            body.writeStringField('email_address', c.Email);
+            body.writeStringField('email_address', email);
             body.writeStringField('status_if_new', 'unsubscribed');
             body.writeFieldName('merge_fields');
             body.writeStartObject();
@@ -307,6 +310,7 @@ public class MailchimpAPI {
             body.writeEndObject();
             body.writeEndObject();
         }
+
         body.writeEndArray();
         body.writeBooleanField('update_existing', true);
         body.writeEndObject();
@@ -330,7 +334,7 @@ public class MailchimpAPI {
         tagsBody.writeEndObject();
     }
 
-    public HttpResponse pushContactTags(List<Contact> contacts, Set<String> contactErrors, MailchimpFieldMapping__mdt[] fieldMappings) {
+    public HttpResponse pushContactTags(Map<String, Contact> contacts, Set<String> contactErrors, MailchimpFieldMapping__mdt[] fieldMappings) {
         // Sync boolean fields as tags using batch endpoint
         // This call will return pretty much immediately, since the batch
         // operations are queued up to happen asynchronously.
@@ -340,11 +344,12 @@ public class MailchimpAPI {
         body.writeStartObject();
         body.writeFieldName('operations');
         body.writeStartArray();
-        for (Contact c : contacts) {
-            if (contactErrors.contains(c.Email)) {
+        for (String email : contacts.keySet()) {
+            if (contactErrors.contains(email)) {
                 continue;
             }
 
+            Contact c = contacts.get(email);
             tagsBody = JSON.createGenerator(false);
             tagsBody.writeStartObject();
             tagsBody.writeFieldName('tags');

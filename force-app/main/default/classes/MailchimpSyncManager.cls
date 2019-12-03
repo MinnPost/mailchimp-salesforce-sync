@@ -204,6 +204,28 @@ public with sharing class MailchimpSyncManager {
         return syncError;
     }
 
+    // Construct a map of contacts' Mailchimp-subscribed e-mail addresses to
+    // the corresponding Contact records. This is needed because the subscribed
+    // address may not be the contact's primary e-mail address in Salesforce.
+    private Map<String, Contact> collectSubscribers(Contact[] contacts) {
+        // TODO: reorganize code so that we get the MailchimpSyncStatus__c
+        // records from the original query -- this way is a bit gross
+        Map<Id, Contact> contactsMap = new Map<Id, Contact>();
+        for (Contact c : contacts) contactsMap.put(c.Id, c);
+        Set<Id> contactIds = contactsMap.keySet();
+
+        // This query isn't as bad as it looks since Apex can pass any number
+        // of contactIds into the query efficiently (i.e., this is not string
+        // interpolation)
+        Map<String, Contact> subscribers = new Map<String, Contact>();
+        for (MailchimpSyncStatus__c status :
+             [SELECT Id, Contact__c, Email__c FROM MailchimpSyncStatus__c
+              WHERE Contact__c IN :contactIds]) {
+            subscribers.put(status.Email__c, contactsMap.get(status.Contact__c));
+        }
+        return subscribers;
+    }
+
     private void parseContactFieldsResponse(String respBody, Result result) {
         JSONParser parser = JSON.createParser(respBody);
         try {
@@ -299,17 +321,18 @@ public with sharing class MailchimpSyncManager {
     }
 
     private void markContactsSynced(
-        Contact[] contacts,
+        Map<String, Contact> contacts,
         Map<String, Mailchimp_Sync_Error__c> contactErrors,
         String tagBatchID
     ) {
         DateTime lastSyncedAt = DateTime.now();
         MailchimpSyncStatus__c[] statuses = new List<MailchimpSyncStatus__c>();
-        for (Contact c : contacts) {
-            if (contactErrors.containsKey(c.Email)) continue;
+        for (String email : contacts.keySet()) {
+            Contact c = contacts.get(email);
+            if (contactErrors.containsKey(email)) continue;
             statuses.add(new MailchimpSyncStatus__c(
                 Contact__c=c.Id,
-                Email__c=c.Email,
+                Email__c=email,
                 LastPushed__c=lastSyncedAt,
                 BatchID__c=tagBatchID
             ));
@@ -335,12 +358,14 @@ public with sharing class MailchimpSyncManager {
     public Result pushAll(Contact[] contacts) {
         Result result = new Result();
 
+        Map<String, Contact> subscriberMap = this.collectSubscribers(contacts);
+
         // Mailchimp API returns 200 even if some of the sub/unsub changes
         // produced errors.
         // I have observed it return a 400 Bad Request with an error response
         // if there are duplicate e-mails in the list.
         MailchimpAPI mailchimp = new MailchimpAPI();
-        HttpResponse pushFieldsResp = mailchimp.pushContactFields(contacts, this.fieldMappings);
+        HttpResponse pushFieldsResp = mailchimp.pushContactFields(subscriberMap, this.fieldMappings);
         if (pushFieldsResp.getStatusCode() != 200) {
             result.requestError = this.reportError(STAGE_BATCH_SUB_UNSUB, pushFieldsResp.getBody());
             insert result.requestError;
@@ -352,7 +377,7 @@ public with sharing class MailchimpSyncManager {
             return result;
         }
 
-        HttpResponse tagsResp = mailchimp.pushContactTags(contacts, result.contactErrors.keySet(), this.fieldMappings);
+        HttpResponse tagsResp = mailchimp.pushContactTags(subscriberMap, result.contactErrors.keySet(), this.fieldMappings);
         if (tagsResp.getStatusCode() != 200) {
             result.requestError = this.reportError(STAGE_BATCH_TAG, tagsResp.getBody());
             insert result.requestError;
@@ -365,7 +390,7 @@ public with sharing class MailchimpSyncManager {
         }
 
         insert result.contactErrors.values();
-        this.markContactsSynced(contacts, result.contactErrors, batch.Name);
+        this.markContactsSynced(subscriberMap, result.contactErrors, batch.Name);
         return result;
     }
 
@@ -747,6 +772,7 @@ public with sharing class MailchimpSyncManager {
             }
         }
 
+        // Update contacts we found by alternate e-mail
         Database.SaveResult[] updateResults = Database.update(contactsToUpdate, false);
         for (Integer i = 0; i < updateResults.size(); ++i) {
             Database.SaveResult updateResult = updateResults[i];
