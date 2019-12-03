@@ -59,6 +59,7 @@ private class MailchimpJobsTest {
         insert testContact;
         MailchimpSyncStatus__c testStatus = new MailchimpSyncStatus__c(
             Contact__c=testContact.Id,
+            ContactID__c=testContact.Id,
             Email__c='joe.schmoe@example.com',
             LastChanged__c=Datetime.newInstanceGmt(2019, 9, 17, 10, 2, 55)
         );

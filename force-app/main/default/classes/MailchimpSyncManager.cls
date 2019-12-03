@@ -332,13 +332,14 @@ public with sharing class MailchimpSyncManager {
             if (contactErrors.containsKey(email)) continue;
             statuses.add(new MailchimpSyncStatus__c(
                 Contact__c=c.Id,
+                ContactID__c=c.Id,
                 Email__c=email,
                 LastPushed__c=lastSyncedAt,
                 BatchID__c=tagBatchID
             ));
         }
         Database.UpsertResult[] results = Database.upsert(
-            statuses, MailchimpSyncStatus__c.fields.Email__c, false
+            statuses, MailchimpSyncStatus__c.fields.ContactID__c, false
         );
         for (Database.UpsertResult result : results) {
             if (result.isSuccess()) continue;
@@ -715,6 +716,7 @@ public with sharing class MailchimpSyncManager {
                 c.Id = contactId;
                 seenContactIds.add(contactId);
                 status.Contact__c = contactId;
+                status.ContactID__c = contactId;
                 statuses.add(status);
                 continue;
             }
@@ -779,7 +781,9 @@ public with sharing class MailchimpSyncManager {
             Contact c = contactsToUpdate[i];
             MailchimpSyncStatus__c status = statusesToUpdate[i];
             if (updateResult.isSuccess()) {
-                status.Contact__c = updateResult.getId();
+                Id contactId = updateResult.getId();
+                status.Contact__c = contactId;
+                status.ContactID__c = contactId;
                 statuses.add(status);
                 continue;
             }
@@ -810,8 +814,10 @@ public with sharing class MailchimpSyncManager {
             Contact c = contactsToInsert[i];
             MailchimpSyncStatus__c status = statusesToInsert[i];
             if (insertResult.isSuccess()) {
-                c.Id = insertResult.getId();
-                status.Contact__c = insertResult.getId();
+                Id contactId = insertResult.getId();
+                c.Id = contactId;
+                status.Contact__c = contactId;
+                status.ContactID__c = contactId;
                 statuses.add(status);
                 continue;
             }
@@ -835,7 +841,7 @@ public with sharing class MailchimpSyncManager {
         }
 
         Database.UpsertResult[] statusResults = Database.upsert(
-            statuses, MailchimpSyncStatus__c.fields.Email__c, false
+            statuses, MailchimpSyncStatus__c.fields.ContactID__c, false
         );
         for (Database.UpsertResult result : statusResults) {
             if (result.isSuccess()) continue;
