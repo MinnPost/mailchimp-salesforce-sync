@@ -759,7 +759,7 @@ public with sharing class MailchimpSyncManager {
             }
 
             System.debug(LoggingLevel.ERROR, 'Error(s) updating contact.');
-            String email = c.Email;
+            String email = status.Email__c;
             Contact contactRef = new Contact(Id=c.Id);
             for (Database.Error err : updateResult.getErrors()) {
                 System.debug(
@@ -791,16 +791,17 @@ public with sharing class MailchimpSyncManager {
             }
 
             System.debug(LoggingLevel.ERROR, 'Error(s) creating contact.');
+            String email = status.Email__c;
             for (Database.Error err : insertResult.getErrors()) {
                 System.debug(
                     LoggingLevel.ERROR,
                     err.getStatusCode() + ': ' + err.getMessage()
                 );
                 contactErrors.put(
-                    c.Email,
+                    email,
                     new Mailchimp_Sync_Error__c(
                         Stage__c=STAGE_FETCH_MEMBERS,
-                        Title__c='Error while creating contact ' + c.Email,
+                        Title__c='Error while creating contact ' + email,
                         Detail__c=err.getStatusCode() + ': ' + err.getMessage()
                     )
                 );
