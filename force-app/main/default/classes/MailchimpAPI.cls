@@ -295,7 +295,7 @@ public class MailchimpAPI {
         for (Contact c : contacts) {
             body.writeStartObject();
             body.writeStringField('email_address', c.Email);
-            body.writeStringField('status_if_new', 'subscribed');
+            body.writeStringField('status_if_new', 'unsubscribed');
             body.writeFieldName('merge_fields');
             body.writeStartObject();
             for (MailchimpFieldMapping__mdt fieldMapping : fieldMappings) {
