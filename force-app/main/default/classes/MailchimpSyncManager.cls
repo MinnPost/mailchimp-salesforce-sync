@@ -204,7 +204,7 @@ public with sharing class MailchimpSyncManager {
         return syncError;
     }
 
-    private void parseContactFieldsResponse(Contact[] contacts, String respBody, Result result) {
+    private void parseContactFieldsResponse(String respBody, Result result) {
         JSONParser parser = JSON.createParser(respBody);
         try {
             ContactFieldsResponse response = (ContactFieldsResponse)parser.readValueAs(ContactFieldsResponse.class);
@@ -346,7 +346,7 @@ public with sharing class MailchimpSyncManager {
             insert result.requestError;
             return result;
         }
-        this.parseContactFieldsResponse(contacts, pushFieldsResp.getBody(), result);
+        this.parseContactFieldsResponse(pushFieldsResp.getBody(), result);
         if (result.isError()) {
             insert result.requestError;
             return result;
