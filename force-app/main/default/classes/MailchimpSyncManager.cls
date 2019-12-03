@@ -852,12 +852,22 @@ public with sharing class MailchimpSyncManager {
             MailchimpAPI.Subscriber member = members[i];
             if (contactErrors.contains(member.email_address)) continue;
 
+            Contact c = contacts[i];
+            if (c.Id == null) {
+                System.debug(LoggingLevel.ERROR,
+                    'Error while updating subscriptions for ' + member.email_address +
+                    ': missing contact ID!'
+                );
+                System.debug(c);
+                continue;
+            }
+
             for (String interestID : member.interests.keySet()) {
                 Interest__c interestRef = new Interest__c(InterestID__c=interestID);
                 MailchimpSubscription__c sub = new MailchimpSubscription__c(
                     Name=member.email_address + ' ' + interestID,
                     SubscriptionKey__c=member.ID + '-' + interestID,
-                    Contact__c=contacts[i].Id,
+                    Contact__c=c.Id,
                     Interest__r=interestRef,
                     Subscribed__c=member.interests.get(interestID)
                 );
