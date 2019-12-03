@@ -315,7 +315,7 @@ public with sharing class MailchimpSyncManager {
             ));
         }
         Database.UpsertResult[] results = Database.upsert(
-            statuses, MailchimpSyncStatus__c.fields.Email__c
+            statuses, MailchimpSyncStatus__c.fields.Email__c, false
         );
         for (Database.UpsertResult result : results) {
             if (result.isSuccess()) continue;
@@ -478,7 +478,7 @@ public with sharing class MailchimpSyncManager {
                 DisplayOrder__c=c.display_order
             );
             Database.UpsertResult catResult =
-                Database.upsert(category, InterestCategory__c.Fields.CategoryID__c);
+                Database.upsert(category, InterestCategory__c.Fields.CategoryID__c, false);
             if (!catResult.isSuccess()) {
                 System.debug(
                     LoggingLevel.ERROR,
@@ -808,7 +808,7 @@ public with sharing class MailchimpSyncManager {
         }
 
         Database.UpsertResult[] statusResults = Database.upsert(
-            statuses, MailchimpSyncStatus__c.fields.Email__c
+            statuses, MailchimpSyncStatus__c.fields.Email__c, false
         );
         for (Database.UpsertResult result : statusResults) {
             if (result.isSuccess()) continue;
