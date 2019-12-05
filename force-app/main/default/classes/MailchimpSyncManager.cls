@@ -740,14 +740,15 @@ public with sharing class MailchimpSyncManager {
 
                 Id contactId = altEmails[0].Primary_Contact__r.Id;
 
+                // Don't change the SF contact's primary e-mail
+                c.Id = contactId;
+                c.Email = altEmails[0].Primary_Contact__r.Email;
+
                 // Don't update contact if we already upserted them under a
                 // different address
                 if (seenContactIds.contains(contactId)) continue;
                 seenContactIds.add(contactId);
 
-                // Don't change the SF contact's primary e-mail
-                c.Id = contactId;
-                c.Email = altEmails[0].Primary_Contact__r.Email;
                 contactsToUpdate.add(c);
                 statusesToUpdate.add(status);
 
