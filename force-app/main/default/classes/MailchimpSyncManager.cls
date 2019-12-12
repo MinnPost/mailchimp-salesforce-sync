@@ -729,7 +729,8 @@ public with sharing class MailchimpSyncManager {
                 Email__c[] altEmails =
                     [SELECT Id, Primary_Contact__r.Id, Primary_Contact__r.Email
                      FROM Email__c
-                     WHERE Email_Address__c = :email];
+                     WHERE Email_Address__c = :email
+                     AND Primary_Contact__c IN (SELECT Id FROM Contact)];
                 if (altEmails.isEmpty()) {
                     System.debug(email + ' not found as alternate address, creating new contact');
                     this.addSyncFields(c, member);
