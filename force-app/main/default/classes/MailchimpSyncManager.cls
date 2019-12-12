@@ -764,6 +764,19 @@ public with sharing class MailchimpSyncManager {
                     LoggingLevel.ERROR,
                     err.getStatusCode() + ': ' + err.getMessage()
                 );
+
+                if (err.getStatusCode() == StatusCode.DUPLICATE_EXTERNAL_ID) {
+                    contactErrors.put(
+                        email,
+                        new Mailchimp_Sync_Error__c(
+                            Stage__c=STAGE_FETCH_MEMBERS,
+                            Title__c='Error while updating contact ' + email,
+                            Detail__c=err.getStatusCode() + ': ' + err.getMessage()
+                        )
+                    );
+                    continue;
+                }
+
                 contactErrors.put(
                     email,
                     new Mailchimp_Sync_Error__c(
