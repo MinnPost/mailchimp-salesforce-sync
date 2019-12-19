@@ -173,7 +173,7 @@ public with sharing class MailchimpSyncController {
 
         if (Test.isRunningTest()) return redirect;
 
-        System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(200, 0)));
+        System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(150, 0)));
 
         return redirect;
     }
@@ -184,7 +184,7 @@ public with sharing class MailchimpSyncController {
 
         if (Test.isRunningTest()) return redirect;
 
-        System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(200, 0, false)));
+        System.enqueueJob(new MailchimpPullInterestsJob(new MailchimpPullJob(150, 0, false)));
 
         return redirect;
     }
