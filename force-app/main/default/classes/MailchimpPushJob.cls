@@ -19,7 +19,8 @@ global with sharing class MailchimpPushJob implements Database.Batchable<SObject
         System.scheduleBatch(
             new MailchimpUpdateBatchesJob(),
             'Update Mailchimp batch job status',
-            5 // minute(s)
+            5, // minute(s)
+            50 // batch size
         );
     }
 }
