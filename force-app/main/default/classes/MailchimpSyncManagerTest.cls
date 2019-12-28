@@ -261,6 +261,7 @@ private class MailchimpSyncManagerTest {
             MailchimpSyncStatus__c status = testStatuses[i];
             if (status != null) {
                 status.Contact__c = contactId;
+                status.ContactID__c = contactId;
                 statusesToInsert.add(status);
             }
         }

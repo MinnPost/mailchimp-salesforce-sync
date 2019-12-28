@@ -204,7 +204,29 @@ public with sharing class MailchimpSyncManager {
         return syncError;
     }
 
-    private void parseContactFieldsResponse(Contact[] contacts, String respBody, Result result) {
+    // Construct a map of contacts' Mailchimp-subscribed e-mail addresses to
+    // the corresponding Contact records. This is needed because the subscribed
+    // address may not be the contact's primary e-mail address in Salesforce.
+    private Map<String, Contact> collectSubscribers(Contact[] contacts) {
+        // TODO: reorganize code so that we get the MailchimpSyncStatus__c
+        // records from the original query -- this way is a bit gross
+        Map<Id, Contact> contactsMap = new Map<Id, Contact>();
+        for (Contact c : contacts) contactsMap.put(c.Id, c);
+        Set<Id> contactIds = contactsMap.keySet();
+
+        // This query isn't as bad as it looks since Apex can pass any number
+        // of contactIds into the query efficiently (i.e., this is not string
+        // interpolation)
+        Map<String, Contact> subscribers = new Map<String, Contact>();
+        for (MailchimpSyncStatus__c status :
+             [SELECT Id, Contact__c, Email__c FROM MailchimpSyncStatus__c
+              WHERE Contact__c IN :contactIds]) {
+            subscribers.put(status.Email__c, contactsMap.get(status.Contact__c));
+        }
+        return subscribers;
+    }
+
+    private void parseContactFieldsResponse(String respBody, Result result) {
         JSONParser parser = JSON.createParser(respBody);
         try {
             ContactFieldsResponse response = (ContactFieldsResponse)parser.readValueAs(ContactFieldsResponse.class);
@@ -299,23 +321,25 @@ public with sharing class MailchimpSyncManager {
     }
 
     private void markContactsSynced(
-        Contact[] contacts,
+        Map<String, Contact> contacts,
         Map<String, Mailchimp_Sync_Error__c> contactErrors,
         String tagBatchID
     ) {
         DateTime lastSyncedAt = DateTime.now();
         MailchimpSyncStatus__c[] statuses = new List<MailchimpSyncStatus__c>();
-        for (Contact c : contacts) {
-            if (contactErrors.containsKey(c.Email)) continue;
+        for (String email : contacts.keySet()) {
+            Contact c = contacts.get(email);
+            if (contactErrors.containsKey(email)) continue;
             statuses.add(new MailchimpSyncStatus__c(
                 Contact__c=c.Id,
-                Email__c=c.Email,
+                ContactID__c=c.Id,
+                Email__c=email,
                 LastPushed__c=lastSyncedAt,
                 BatchID__c=tagBatchID
             ));
         }
         Database.UpsertResult[] results = Database.upsert(
-            statuses, MailchimpSyncStatus__c.fields.Email__c
+            statuses, MailchimpSyncStatus__c.fields.ContactID__c, false
         );
         for (Database.UpsertResult result : results) {
             if (result.isSuccess()) continue;
@@ -335,24 +359,26 @@ public with sharing class MailchimpSyncManager {
     public Result pushAll(Contact[] contacts) {
         Result result = new Result();
 
+        Map<String, Contact> subscriberMap = this.collectSubscribers(contacts);
+
         // Mailchimp API returns 200 even if some of the sub/unsub changes
         // produced errors.
         // I have observed it return a 400 Bad Request with an error response
         // if there are duplicate e-mails in the list.
         MailchimpAPI mailchimp = new MailchimpAPI();
-        HttpResponse pushFieldsResp = mailchimp.pushContactFields(contacts, this.fieldMappings);
+        HttpResponse pushFieldsResp = mailchimp.pushContactFields(subscriberMap, this.fieldMappings);
         if (pushFieldsResp.getStatusCode() != 200) {
             result.requestError = this.reportError(STAGE_BATCH_SUB_UNSUB, pushFieldsResp.getBody());
             insert result.requestError;
             return result;
         }
-        this.parseContactFieldsResponse(contacts, pushFieldsResp.getBody(), result);
+        this.parseContactFieldsResponse(pushFieldsResp.getBody(), result);
         if (result.isError()) {
             insert result.requestError;
             return result;
         }
 
-        HttpResponse tagsResp = mailchimp.pushContactTags(contacts, result.contactErrors.keySet(), this.fieldMappings);
+        HttpResponse tagsResp = mailchimp.pushContactTags(subscriberMap, result.contactErrors.keySet(), this.fieldMappings);
         if (tagsResp.getStatusCode() != 200) {
             result.requestError = this.reportError(STAGE_BATCH_TAG, tagsResp.getBody());
             insert result.requestError;
@@ -365,7 +391,7 @@ public with sharing class MailchimpSyncManager {
         }
 
         insert result.contactErrors.values();
-        this.markContactsSynced(contacts, result.contactErrors, batch.Name);
+        this.markContactsSynced(subscriberMap, result.contactErrors, batch.Name);
         return result;
     }
 
@@ -478,7 +504,7 @@ public with sharing class MailchimpSyncManager {
                 DisplayOrder__c=c.display_order
             );
             Database.UpsertResult catResult =
-                Database.upsert(category, InterestCategory__c.Fields.CategoryID__c);
+                Database.upsert(category, InterestCategory__c.Fields.CategoryID__c, false);
             if (!catResult.isSuccess()) {
                 System.debug(
                     LoggingLevel.ERROR,
@@ -666,6 +692,7 @@ public with sharing class MailchimpSyncManager {
         Map<String, Mailchimp_Sync_Error__c> contactErrors = new Map<String, Mailchimp_Sync_Error__c>();
         MailchimpSyncStatus__c[] statuses = new List<MailchimpSyncStatus__c>();
 
+        Set<Id> seenContactIds = new Set<Id>();
         Contact[] contactsToInsert = new List<Contact>();
         MailchimpSyncStatus__c[] statusesToInsert = new List<MailchimpSyncStatus__c>();
         Contact[] contactsToUpdate = new List<Contact>();
@@ -685,8 +712,11 @@ public with sharing class MailchimpSyncManager {
             );
 
             if (upsertResult.isSuccess()) {
-                c.Id = upsertResult.getId();
-                status.Contact__c = upsertResult.getId();
+                Id contactId = upsertResult.getId();
+                c.Id = contactId;
+                seenContactIds.add(contactId);
+                status.Contact__c = contactId;
+                status.ContactID__c = contactId;
                 statuses.add(status);
                 continue;
             }
@@ -699,7 +729,8 @@ public with sharing class MailchimpSyncManager {
                 Email__c[] altEmails =
                     [SELECT Id, Primary_Contact__r.Id, Primary_Contact__r.Email
                      FROM Email__c
-                     WHERE Email_Address__c = :email];
+                     WHERE Email_Address__c = :email
+                     AND Primary_Contact__c IN (SELECT Id FROM Contact)];
                 if (altEmails.isEmpty()) {
                     System.debug(email + ' not found as alternate address, creating new contact');
                     this.addSyncFields(c, member);
@@ -708,9 +739,17 @@ public with sharing class MailchimpSyncManager {
                     continue;
                 }
 
+                Id contactId = altEmails[0].Primary_Contact__r.Id;
+
                 // Don't change the SF contact's primary e-mail
-                c.Id = altEmails[0].Primary_Contact__r.Id;
+                c.Id = contactId;
                 c.Email = altEmails[0].Primary_Contact__r.Email;
+
+                // Don't update contact if we already upserted them under a
+                // different address
+                if (seenContactIds.contains(contactId)) continue;
+                seenContactIds.add(contactId);
+
                 contactsToUpdate.add(c);
                 statusesToUpdate.add(status);
 
@@ -725,6 +764,19 @@ public with sharing class MailchimpSyncManager {
                     LoggingLevel.ERROR,
                     err.getStatusCode() + ': ' + err.getMessage()
                 );
+
+                if (err.getStatusCode() == StatusCode.DUPLICATE_EXTERNAL_ID) {
+                    contactErrors.put(
+                        email,
+                        new Mailchimp_Sync_Error__c(
+                            Stage__c=STAGE_FETCH_MEMBERS,
+                            Title__c='Error while updating contact ' + email,
+                            Detail__c=err.getStatusCode() + ': ' + err.getMessage()
+                        )
+                    );
+                    continue;
+                }
+
                 contactErrors.put(
                     email,
                     new Mailchimp_Sync_Error__c(
@@ -737,19 +789,22 @@ public with sharing class MailchimpSyncManager {
             }
         }
 
+        // Update contacts we found by alternate e-mail
         Database.SaveResult[] updateResults = Database.update(contactsToUpdate, false);
         for (Integer i = 0; i < updateResults.size(); ++i) {
             Database.SaveResult updateResult = updateResults[i];
             Contact c = contactsToUpdate[i];
             MailchimpSyncStatus__c status = statusesToUpdate[i];
             if (updateResult.isSuccess()) {
-                status.Contact__c = updateResult.getId();
+                Id contactId = updateResult.getId();
+                status.Contact__c = contactId;
+                status.ContactID__c = contactId;
                 statuses.add(status);
                 continue;
             }
 
             System.debug(LoggingLevel.ERROR, 'Error(s) updating contact.');
-            String email = c.Email;
+            String email = status.Email__c;
             Contact contactRef = new Contact(Id=c.Id);
             for (Database.Error err : updateResult.getErrors()) {
                 System.debug(
@@ -774,23 +829,26 @@ public with sharing class MailchimpSyncManager {
             Contact c = contactsToInsert[i];
             MailchimpSyncStatus__c status = statusesToInsert[i];
             if (insertResult.isSuccess()) {
-                c.Id = insertResult.getId();
-                status.Contact__c = insertResult.getId();
+                Id contactId = insertResult.getId();
+                c.Id = contactId;
+                status.Contact__c = contactId;
+                status.ContactID__c = contactId;
                 statuses.add(status);
                 continue;
             }
 
             System.debug(LoggingLevel.ERROR, 'Error(s) creating contact.');
+            String email = status.Email__c;
             for (Database.Error err : insertResult.getErrors()) {
                 System.debug(
                     LoggingLevel.ERROR,
                     err.getStatusCode() + ': ' + err.getMessage()
                 );
                 contactErrors.put(
-                    c.Email,
+                    email,
                     new Mailchimp_Sync_Error__c(
                         Stage__c=STAGE_FETCH_MEMBERS,
-                        Title__c='Error while creating contact ' + c.Email,
+                        Title__c='Error while creating contact ' + email,
                         Detail__c=err.getStatusCode() + ': ' + err.getMessage()
                     )
                 );
@@ -798,7 +856,7 @@ public with sharing class MailchimpSyncManager {
         }
 
         Database.UpsertResult[] statusResults = Database.upsert(
-            statuses, MailchimpSyncStatus__c.fields.Email__c
+            statuses, MailchimpSyncStatus__c.fields.ContactID__c, false
         );
         for (Database.UpsertResult result : statusResults) {
             if (result.isSuccess()) continue;
@@ -841,15 +899,22 @@ public with sharing class MailchimpSyncManager {
             MailchimpAPI.Subscriber member = members[i];
             if (contactErrors.contains(member.email_address)) continue;
 
-            // Create reference version of the contact we can use to update subscriptions
-            Contact contactRef = new Contact(Id=contacts[i].Id);
+            Contact c = contacts[i];
+            if (c.Id == null) {
+                System.debug(LoggingLevel.ERROR,
+                    'Error while updating subscriptions for ' + member.email_address +
+                    ': missing contact ID!'
+                );
+                System.debug(c);
+                continue;
+            }
 
             for (String interestID : member.interests.keySet()) {
                 Interest__c interestRef = new Interest__c(InterestID__c=interestID);
                 MailchimpSubscription__c sub = new MailchimpSubscription__c(
                     Name=member.email_address + ' ' + interestID,
                     SubscriptionKey__c=member.ID + '-' + interestID,
-                    Contact__r=contactRef,
+                    Contact__c=c.Id,
                     Interest__r=interestRef,
                     Subscribed__c=member.interests.get(interestID)
                 );
@@ -878,7 +943,7 @@ public with sharing class MailchimpSyncManager {
                 );
                 subscriptionErrors.add(new Mailchimp_Sync_Error__c(
                     Stage__c=STAGE_UPDATE_SUBSCRIPTIONS,
-                    Contact__r=subscription.Contact__r,
+                    Contact__c=subscription.Contact__c,
                     Title__c='Error while updating subscription ' + subscription.Name,
                     Detail__c=err.getStatusCode() + ': ' + err.getMessage()
                 ));
