@@ -69,7 +69,7 @@
         <apex:pageBlock title="Mailchimp batch operations in progress">
             <apex:pageBlockButtons location="top">
                 <apex:commandButton action="{!URLFOR($Action.Mailchimp_Batch_Operation__c.List, $ObjectType.Mailchimp_Batch_Operation__c.keyPrefix)}" value="View all" />
-                <apex:commandButton action="{!updateBatches}" value="Update all" />
+                <apex:commandButton action="{!updateBatches}" value="Update" />
             </apex:pageBlockButtons>
             <apex:pageBlockTable var="batch" value="{!unfinishedBatchOperations}">
                 <apex:column>
