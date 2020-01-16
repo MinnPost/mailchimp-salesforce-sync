@@ -194,7 +194,7 @@ public with sharing class MailchimpSyncController {
         redirect.setRedirect(true);
 
         MailchimpSyncManager mailchimp = new MailchimpSyncManager();
-        mailchimp.updateBatches(mailchimp.unfinishedBatches(50));
+        mailchimp.updateBatches(this.unfinishedBatchOperations);
 
         return redirect;
     }
